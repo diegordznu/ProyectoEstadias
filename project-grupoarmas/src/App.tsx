@@ -20,6 +20,8 @@ type TransferRecord = {
 
 const PLANT_OPTIONS = ['Planta 1', 'Planta 2', 'Planta 3', 'Planta 6']
 
+const COLUMNS_PLANTA_1 = ['FECHA','MATERIAL','LOTE','SALDO','ORIGEN','DESTINO','PIEZA RESULT.','CANTIDAD'];
+
 const initialInventory: InventoryItem[] = [
   { sku: 'MOD-AC-01', name: 'MÓDULO AIRE ACONDICIONADO V8', p1: 150, p2: 45, p3: 300, p6: 200 },
   { sku: 'RAD-AL-99', name: 'RADIADOR ALUMINIO REFORZADO', p1: 80, p2: 120, p3: 50, p6: 150 },
@@ -211,20 +213,14 @@ function App() {
               <div className="table-container plant-table-container">
                 <table>
                   <thead>
-                    <tr>
-                      <th>FECHA</th>
-                      <th>PIEZA</th>
-                      <th>ORIGEN</th>
-                      <th>DESTINO</th>
-                      <th>CANTIDAD</th>
-                    </tr>
+                    {COLUMNS_PLANTA_1.map(c => <th key={c}>{c}</th>)}
                   </thead>
                   <tbody>
                     {transferHistory.filter(
                       (transfer) => transfer.origin === selectedPlant || transfer.dest === selectedPlant,
                     ).length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center' }}>
+                        <td colSpan={COLUMNS_PLANTA_1.length} style={{ textAlign: 'center' }}>
                           NO HAY MOVIMIENTOS REGISTRADOS
                         </td>
                       </tr>

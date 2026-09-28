@@ -132,12 +132,13 @@ select:focus {
 }
 
 .table-container {
-  width: 100%;
   overflow-x: auto;
+  width: 100%;
   margin-bottom: 30px;
 }
 
 table {
+  min-width: 800px;
   width: 100%;
   border-collapse: collapse;
   border: 2px solid var(--text-color);
@@ -150,6 +151,7 @@ td {
   padding: 15px;
   text-align: left;
   font-size: 1.1rem;
+  white-space: nowrap;
 }
 
 th {
