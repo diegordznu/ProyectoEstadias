@@ -13,14 +13,86 @@ type InventoryItem = {
 type TransferRecord = {
   date: string
   piece: string
+  lote: string
+  saldo: number
   origin: string
   dest: string
+  piezaResult: string
   qty: number
 }
 
-const PLANT_OPTIONS = ['Planta 1', 'Planta 2', 'Planta 3', 'Planta 6']
+type ColumnDef = { key: keyof TransferRecord; label: string }
 
-const COLUMNS_PLANTA_1 = ['FECHA','MATERIAL','LOTE','SALDO','ORIGEN','DESTINO','PIEZA RESULT.','CANTIDAD'];
+type PlantTable = { columns: ColumnDef[]; transfers: TransferRecord[] }
+
+const PLANT_TABLES: Record<string, PlantTable> = {
+  'Planta 1': {
+    columns: [
+      { key: 'date', label: 'FECHA' },
+      { key: 'piece', label: 'MATERIAL' },
+      { key: 'lote', label: 'LOTE' },
+      { key: 'saldo', label: 'SALDO' },
+      { key: 'origin', label: 'ORIGEN' },
+      { key: 'dest', label: 'DESTINO' },
+      { key: 'piezaResult', label: 'PIEZA RESULT.' },
+      { key: 'qty', label: 'CANTIDAD' },
+    ],
+    transfers: [
+      { date: '2026-09-01', piece: 'MOD-AC-01', lote: 'L-1001', saldo: 150, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
+      { date: '2026-09-03', piece: 'RAD-AL-99', lote: 'L-1002', saldo: 80, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
+      { date: '2026-09-05', piece: 'SOP-MT-55', lote: 'L-1003', saldo: 200, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
+    ],
+  },
+  'Planta 2': {
+    columns: [
+      { key: 'date', label: 'FECHA' },
+      { key: 'piece', label: 'MATERIAL' },
+      { key: 'origin', label: 'ORIGEN' },
+      { key: 'dest', label: 'DESTINO' },
+      { key: 'qty', label: 'CANTIDAD' },
+    ],
+    transfers: [
+      { date: '2026-09-01', piece: 'MOD-AC-01', lote: 'L-1001', saldo: 45, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
+      { date: '2026-09-07', piece: 'FIL-CB-22', lote: 'L-2001', saldo: 800, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
+    ],
+  },
+  'Planta 3': {
+    columns: [
+      { key: 'date', label: 'FECHA' },
+      { key: 'piece', label: 'MATERIAL' },
+      { key: 'lote', label: 'LOTE' },
+      { key: 'origin', label: 'ORIGEN' },
+      { key: 'dest', label: 'DESTINO' },
+      { key: 'piezaResult', label: 'PIEZA RESULT.' },
+      { key: 'qty', label: 'CANTIDAD' },
+    ],
+    transfers: [
+      { date: '2026-09-03', piece: 'RAD-AL-99', lote: 'L-1002', saldo: 120, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
+      { date: '2026-09-09', piece: 'VAL-EX-33', lote: 'L-3001', saldo: 70, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
+    ],
+  },
+  'Planta 6': {
+    columns: [
+      { key: 'date', label: 'FECHA' },
+      { key: 'piece', label: 'MATERIAL' },
+      { key: 'lote', label: 'LOTE' },
+      { key: 'saldo', label: 'SALDO' },
+      { key: 'origin', label: 'ORIGEN' },
+      { key: 'dest', label: 'DESTINO' },
+      { key: 'qty', label: 'CANTIDAD' },
+    ],
+    transfers: [
+      { date: '2026-09-05', piece: 'SOP-MT-55', lote: 'L-1003', saldo: 800, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
+      { date: '2026-09-07', piece: 'FIL-CB-22', lote: 'L-2001', saldo: 600, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
+      { date: '2026-09-09', piece: 'VAL-EX-33', lote: 'L-3001', saldo: 95, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
+      { date: '2026-09-11', piece: 'TUB-RD-11', lote: 'L-6001', saldo: 250, origin: 'Planta 6', dest: 'Planta 2', piezaResult: 'TUB-RD-11-R', qty: 60 },
+    ],
+  },
+}
+
+const PLANT_OPTIONS = Object.keys(PLANT_TABLES)
+
+const allTransfers = Object.values(PLANT_TABLES).flatMap((table) => table.transfers)
 
 const initialInventory: InventoryItem[] = [
   { sku: 'MOD-AC-01', name: 'MÓDULO AIRE ACONDICIONADO V8', p1: 150, p2: 45, p3: 300, p6: 200 },
@@ -40,7 +112,6 @@ function App() {
   const [loginUser, setLoginUser] = useState('')
   const [loginPass, setLoginPass] = useState('')
   const [inventoryData] = useState<InventoryItem[]>(initialInventory)
-  const [transferHistory] = useState<TransferRecord[]>([])
   const [selectedPlant, setSelectedPlant] = useState<string | null>(null)
   const [message, setMessage] = useState({ text: '', isError: false, visible: false })
 
@@ -213,33 +284,29 @@ function App() {
               <div className="table-container plant-table-container">
                 <table>
                   <thead>
-                    {COLUMNS_PLANTA_1.map(c => <th key={c}>{c}</th>)}
+                    <tr>
+                      {PLANT_TABLES[selectedPlant].columns.map((column) => (
+                        <th key={column.key}>{column.label}</th>
+                      ))}
+                    </tr>
                   </thead>
                   <tbody>
-                    {transferHistory.filter(
-                      (transfer) => transfer.origin === selectedPlant || transfer.dest === selectedPlant,
-                    ).length === 0 ? (
+                    {PLANT_TABLES[selectedPlant].transfers.length === 0 ? (
                       <tr>
-                        <td colSpan={COLUMNS_PLANTA_1.length} style={{ textAlign: 'center' }}>
+                        <td colSpan={PLANT_TABLES[selectedPlant].columns.length} style={{ textAlign: 'center' }}>
                           NO HAY MOVIMIENTOS REGISTRADOS
                         </td>
                       </tr>
                     ) : (
-                      transferHistory
-                        .filter(
-                          (transfer) => transfer.origin === selectedPlant || transfer.dest === selectedPlant,
-                        )
-                        .map((transfer, index) => (
-                          <tr key={`${selectedPlant}-${transfer.date}-${transfer.piece}-${index}`}>
-                            <td>{transfer.date}</td>
-                            <td>{transfer.piece}</td>
-                            <td>{transfer.origin}</td>
-                            <td>{transfer.dest}</td>
-                            <td>
-                              <strong>{transfer.qty}</strong>
+                      PLANT_TABLES[selectedPlant].transfers.map((transfer, index) => (
+                        <tr key={`${selectedPlant}-${transfer.date}-${transfer.piece}-${index}`}>
+                          {PLANT_TABLES[selectedPlant].columns.map((column) => (
+                            <td key={column.key}>
+                              {column.key === 'qty' ? <strong>{transfer[column.key]}</strong> : transfer[column.key]}
                             </td>
-                          </tr>
-                        ))
+                          ))}
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
@@ -268,14 +335,14 @@ function App() {
                 </tr>
               </thead>
               <tbody id="history-tbody">
-                {transferHistory.length === 0 ? (
+                {allTransfers.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center' }}>
                       NO HAY TRASPASOS REGISTRADOS
                     </td>
                   </tr>
                 ) : (
-                  transferHistory.map((transfer, index) => (
+                  allTransfers.map((transfer, index) => (
                     <tr key={`${transfer.date}-${transfer.piece}-${index}`}>
                       <td>{transfer.date}</td>
                       <td>{transfer.piece}</td>
