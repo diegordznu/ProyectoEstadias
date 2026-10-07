@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { EmptyRows } from './components/filters/EmptyRows'
+import { FilterBar } from './components/filters/FilterBar'
+import { useTableFilters } from './hooks/useTableFilters'
+import { daysAgo, monthsAgo } from './lib/dates'
 
 type InventoryItem = {
   sku: string
@@ -38,9 +42,12 @@ const PLANT_TABLES: Record<string, PlantTable> = {
       { key: 'qty', label: 'CANTIDAD' },
     ],
     transfers: [
-      { date: '2026-09-01', piece: 'MOD-AC-01', lote: 'L-1001', saldo: 150, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
-      { date: '2026-09-03', piece: 'RAD-AL-99', lote: 'L-1002', saldo: 80, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
-      { date: '2026-09-05', piece: 'SOP-MT-55', lote: 'L-1003', saldo: 200, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
+      { date: daysAgo(1), piece: 'MOD-AC-01', lote: 'L-1001', saldo: 150, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
+      { date: daysAgo(4), piece: 'RAD-AL-99', lote: 'L-1002', saldo: 80, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
+      { date: daysAgo(9), piece: 'SOP-MT-55', lote: 'L-1003', saldo: 200, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
+      { date: daysAgo(22), piece: 'SEN-TM-44', lote: 'L-1004', saldo: 60, origin: 'Planta 1', dest: 'Planta 2', piezaResult: 'SEN-TM-44', qty: 35 },
+      { date: daysAgo(74), piece: 'COR-VT-88', lote: 'L-1005', saldo: 120, origin: 'Planta 3', dest: 'Planta 1', piezaResult: 'COR-VT-88-R', qty: 50 },
+      { date: monthsAgo(5), piece: 'BOM-AG-77', lote: 'L-1006', saldo: 45, origin: 'Planta 1', dest: 'Planta 6', piezaResult: 'BOM-AG-77', qty: 12 },
     ],
   },
   'Planta 2': {
@@ -52,8 +59,9 @@ const PLANT_TABLES: Record<string, PlantTable> = {
       { key: 'qty', label: 'CANTIDAD' },
     ],
     transfers: [
-      { date: '2026-09-01', piece: 'MOD-AC-01', lote: 'L-1001', saldo: 45, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
-      { date: '2026-09-07', piece: 'FIL-CB-22', lote: 'L-2001', saldo: 800, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
+      { date: daysAgo(2), piece: 'MOD-AC-01', lote: 'L-1001', saldo: 45, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
+      { date: daysAgo(11), piece: 'FIL-CB-22', lote: 'L-2001', saldo: 800, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
+      { date: daysAgo(38), piece: 'INT-FR-66', lote: 'L-2002', saldo: 25, origin: 'Planta 2', dest: 'Planta 3', piezaResult: 'INT-FR-66-R', qty: 8 },
     ],
   },
   'Planta 3': {
@@ -67,8 +75,9 @@ const PLANT_TABLES: Record<string, PlantTable> = {
       { key: 'qty', label: 'CANTIDAD' },
     ],
     transfers: [
-      { date: '2026-09-03', piece: 'RAD-AL-99', lote: 'L-1002', saldo: 120, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
-      { date: '2026-09-09', piece: 'VAL-EX-33', lote: 'L-3001', saldo: 70, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
+      { date: daysAgo(3), piece: 'RAD-AL-99', lote: 'L-1002', saldo: 120, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
+      { date: daysAgo(17), piece: 'VAL-EX-33', lote: 'L-3001', saldo: 70, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
+      { date: daysAgo(65), piece: 'SOP-MT-55', lote: 'L-3002', saldo: 90, origin: 'Planta 3', dest: 'Planta 2', piezaResult: 'SOP-MT-55', qty: 18 },
     ],
   },
   'Planta 6': {
@@ -82,10 +91,12 @@ const PLANT_TABLES: Record<string, PlantTable> = {
       { key: 'qty', label: 'CANTIDAD' },
     ],
     transfers: [
-      { date: '2026-09-05', piece: 'SOP-MT-55', lote: 'L-1003', saldo: 800, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
-      { date: '2026-09-07', piece: 'FIL-CB-22', lote: 'L-2001', saldo: 600, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
-      { date: '2026-09-09', piece: 'VAL-EX-33', lote: 'L-3001', saldo: 95, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
-      { date: '2026-09-11', piece: 'TUB-RD-11', lote: 'L-6001', saldo: 250, origin: 'Planta 6', dest: 'Planta 2', piezaResult: 'TUB-RD-11-R', qty: 60 },
+      { date: daysAgo(5), piece: 'SOP-MT-55', lote: 'L-1003', saldo: 800, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
+      { date: daysAgo(8), piece: 'FIL-CB-22', lote: 'L-2001', saldo: 600, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
+      { date: daysAgo(13), piece: 'VAL-EX-33', lote: 'L-3001', saldo: 95, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
+      { date: daysAgo(29), piece: 'TUB-RD-11', lote: 'L-6001', saldo: 250, origin: 'Planta 6', dest: 'Planta 2', piezaResult: 'TUB-RD-11-R', qty: 60 },
+      { date: daysAgo(47), piece: 'MOD-AC-01', lote: 'L-6002', saldo: 130, origin: 'Planta 6', dest: 'Planta 3', piezaResult: 'MOD-AC-01', qty: 22 },
+      { date: monthsAgo(4), piece: 'COR-VT-88', lote: 'L-6003', saldo: 310, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'COR-VT-88-R', qty: 75 },
     ],
   },
 }
@@ -93,6 +104,10 @@ const PLANT_TABLES: Record<string, PlantTable> = {
 const PLANT_OPTIONS = Object.keys(PLANT_TABLES)
 
 const allTransfers = Object.values(PLANT_TABLES).flatMap((table) => table.transfers)
+
+const inventoryMaterialKey = (item: InventoryItem) => item.sku
+const transferMaterialKey = (transfer: TransferRecord) => transfer.piece
+const transferDateKey = (transfer: TransferRecord) => transfer.date
 
 const initialInventory: InventoryItem[] = [
   { sku: 'MOD-AC-01', name: 'MÓDULO AIRE ACONDICIONADO V8', p1: 150, p2: 45, p3: 300, p6: 200 },
@@ -114,6 +129,30 @@ function App() {
   const [inventoryData] = useState<InventoryItem[]>(initialInventory)
   const [selectedPlant, setSelectedPlant] = useState<string | null>(null)
   const [message, setMessage] = useState({ text: '', isError: false, visible: false })
+
+  const inventoryFilters = useTableFilters<InventoryItem>({
+    rows: inventoryData,
+    materialKey: inventoryMaterialKey,
+  })
+
+  const plantFilters = useTableFilters<TransferRecord>({
+    rows: selectedPlant ? PLANT_TABLES[selectedPlant].transfers : [],
+    materialKey: transferMaterialKey,
+    dateKey: transferDateKey,
+  })
+
+  const historyFilters = useTableFilters<TransferRecord>({
+    rows: allTransfers,
+    materialKey: transferMaterialKey,
+    dateKey: transferDateKey,
+  })
+
+  const resetPlantFilters = plantFilters.reset
+
+  // Cada planta tiene sus propios registros: al cambiar de planta se limpian los filtros.
+  useEffect(() => {
+    resetPlantFilters()
+  }, [selectedPlant, resetPlantFilters])
 
   useEffect(() => {
     if (!message.visible) return
@@ -213,6 +252,19 @@ function App() {
       {activeScreen === 'screen-inventory' && (
         <div id="screen-inventory">
           <h2>INVENTARIO UNIFICADO</h2>
+
+          <FilterBar
+            total={inventoryFilters.total}
+            shown={inventoryFilters.filtered.length}
+            isActive={inventoryFilters.isActive}
+            materials={{
+              options: inventoryFilters.options,
+              value: inventoryFilters.materials,
+              onChange: inventoryFilters.setMaterials,
+            }}
+            onReset={inventoryFilters.reset}
+          />
+
           <div className="table-container">
             <table>
               <thead>
@@ -226,24 +278,33 @@ function App() {
                 </tr>
               </thead>
               <tbody id="inventory-tbody">
-                {inventoryData.map((item) => {
-                  const total = item.p1 + item.p2 + item.p3 + item.p6
+                {inventoryFilters.filtered.length === 0 ? (
+                  <EmptyRows
+                    colSpan={6}
+                    filtered={inventoryFilters.isActive}
+                    defaultLabel="NO HAY MATERIALES REGISTRADOS"
+                    onReset={inventoryFilters.reset}
+                  />
+                ) : (
+                  inventoryFilters.filtered.map((item) => {
+                    const total = item.p1 + item.p2 + item.p3 + item.p6
 
-                  return (
-                    <tr key={item.sku}>
-                      <td>
-                        <strong>{item.sku}</strong>
-                        <br />
-                        <small>{item.name}</small>
-                      </td>
-                      <td>{item.p1}</td>
-                      <td>{item.p2}</td>
-                      <td>{item.p3}</td>
-                      <td>{item.p6}</td>
-                      <td className="total-cell">{total}</td>
-                    </tr>
-                  )
-                })}
+                    return (
+                      <tr key={item.sku}>
+                        <td>
+                          <strong>{item.sku}</strong>
+                          <br />
+                          <small>{item.name}</small>
+                        </td>
+                        <td>{item.p1}</td>
+                        <td>{item.p2}</td>
+                        <td>{item.p3}</td>
+                        <td>{item.p6}</td>
+                        <td className="total-cell">{total}</td>
+                      </tr>
+                    )
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -281,6 +342,25 @@ function App() {
                 </button>
               </div>
 
+              <FilterBar
+                total={plantFilters.total}
+                shown={plantFilters.filtered.length}
+                isActive={plantFilters.isActive}
+                materials={{
+                  options: plantFilters.options,
+                  value: plantFilters.materials,
+                  onChange: plantFilters.setMaterials,
+                }}
+                date={{
+                  preset: plantFilters.preset,
+                  customRange: plantFilters.customRange,
+                  range: plantFilters.range,
+                  onPresetChange: plantFilters.setPreset,
+                  onCustomRangeChange: plantFilters.setCustomRange,
+                }}
+                onReset={plantFilters.reset}
+              />
+
               <div className="table-container plant-table-container">
                 <table>
                   <thead>
@@ -291,14 +371,15 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {PLANT_TABLES[selectedPlant].transfers.length === 0 ? (
-                      <tr>
-                        <td colSpan={PLANT_TABLES[selectedPlant].columns.length} style={{ textAlign: 'center' }}>
-                          NO HAY MOVIMIENTOS REGISTRADOS
-                        </td>
-                      </tr>
+                    {plantFilters.filtered.length === 0 ? (
+                      <EmptyRows
+                        colSpan={PLANT_TABLES[selectedPlant].columns.length}
+                        filtered={plantFilters.isActive}
+                        defaultLabel="NO HAY MOVIMIENTOS REGISTRADOS"
+                        onReset={plantFilters.reset}
+                      />
                     ) : (
-                      PLANT_TABLES[selectedPlant].transfers.map((transfer, index) => (
+                      plantFilters.filtered.map((transfer, index) => (
                         <tr key={`${selectedPlant}-${transfer.date}-${transfer.piece}-${index}`}>
                           {PLANT_TABLES[selectedPlant].columns.map((column) => (
                             <td key={column.key}>
@@ -323,6 +404,26 @@ function App() {
       {activeScreen === 'screen-history' && (
         <div id="screen-history">
           <h2>HISTORIAL RECIENTE</h2>
+
+          <FilterBar
+            total={historyFilters.total}
+            shown={historyFilters.filtered.length}
+            isActive={historyFilters.isActive}
+            materials={{
+              options: historyFilters.options,
+              value: historyFilters.materials,
+              onChange: historyFilters.setMaterials,
+            }}
+            date={{
+              preset: historyFilters.preset,
+              customRange: historyFilters.customRange,
+              range: historyFilters.range,
+              onPresetChange: historyFilters.setPreset,
+              onCustomRangeChange: historyFilters.setCustomRange,
+            }}
+            onReset={historyFilters.reset}
+          />
+
           <div className="table-container">
             <table>
               <thead>
@@ -335,14 +436,15 @@ function App() {
                 </tr>
               </thead>
               <tbody id="history-tbody">
-                {allTransfers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: 'center' }}>
-                      NO HAY TRASPASOS REGISTRADOS
-                    </td>
-                  </tr>
+                {historyFilters.filtered.length === 0 ? (
+                  <EmptyRows
+                    colSpan={5}
+                    filtered={historyFilters.isActive}
+                    defaultLabel="NO HAY TRASPASOS REGISTRADOS"
+                    onReset={historyFilters.reset}
+                  />
                 ) : (
-                  allTransfers.map((transfer, index) => (
+                  historyFilters.filtered.map((transfer, index) => (
                     <tr key={`${transfer.date}-${transfer.piece}-${index}`}>
                       <td>{transfer.date}</td>
                       <td>{transfer.piece}</td>
