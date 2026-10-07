@@ -1,18 +1,12 @@
 import 'dotenv/config';
 import sql from 'mssql';
 import express, { type Application, type Request, type Response } from 'express';
+import { requiredEnv } from './config/env';
+import { pingErp } from './services/erpApi';
 
 const app: Application = express();
 const port = 3000;
 
-function requiredEnv(name: string): string {
-    const value = process.env[name];
-    if (!value?.trim()) {
-        throw new Error(`Falta configurar la variable ${name} en el archivo .env`);
-    }
-    return value;
-}
-/*
 const config = {
     user: requiredEnv('DB_USER'),
     password: requiredEnv('DB_PASSWORD'),
@@ -23,11 +17,22 @@ const config = {
         trustServerCertificate: true,
     },
 };
-*/
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.get('/', (_req: Request, res: Response) => {
     res.send('Hello, Typescript with Express and SQL Server!');
+});
+
+// Ruta de prueba: confirma que la API del ERP responde.
+app.get('/erp/ping', async (_req: Request, res: Response) => {
+    try {
+        const erp = await pingErp();
+        res.status(erp.ok ? 200 : 502).json({ erpStatus: erp.status, body: erp.body });
+    } catch (error: unknown) {
+        console.error('Error al consultar la API del ERP:', error);
+        res.status(502).json({ error: 'No se pudo conectar con la API del ERP' });
+    }
 });
 
 async function startServer(): Promise<void> {
