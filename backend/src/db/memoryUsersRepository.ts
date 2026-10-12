@@ -1,0 +1,89 @@
+import bcrypt from 'bcryptjs';
+import type {
+    Usuario,
+    UsuarioAltaInput,
+    UsuarioInput,
+    UsersRepository,
+} from './usersRepository';
+
+interface UsuarioGuardado extends Usuario {
+    passwordHash: string;
+}
+
+/** Contraseña inicial de los usuarios de ejemplo (solo mientras se usa la BD en memoria). */
+const SEED_PASSWORD = '123456';
+
+const SEED_USUARIOS: Array<Omit<UsuarioGuardado, 'id' | 'passwordHash'>> = [
+    { usuario: 'PRODUCCION', tipoUsuario: 'CAPTURISTA', vigenciaFini: null, vigenciaFechafin: null, estatus: 'ACTIVO' },
+    { usuario: 'GROSAS', tipoUsuario: 'CAPTURISTA', vigenciaFini: null, vigenciaFechafin: null, estatus: 'ACTIVO' },
+    { usuario: 'LNAVA', tipoUsuario: 'CAPTURISTA', vigenciaFini: null, vigenciaFechafin: null, estatus: 'ACTIVO' },
+    { usuario: 'JONATHAN SARABIA', tipoUsuario: 'ADMINISTRADOR', vigenciaFini: null, vigenciaFechafin: null, estatus: 'ACTIVO' },
+    { usuario: 'FHERNANDEZ', tipoUsuario: 'CAPTURISTA', vigenciaFini: null, vigenciaFechafin: null, estatus: 'ACTIVO' },
+    { usuario: 'EVILLANUEVA', tipoUsuario: 'CONSULTA', vigenciaFini: null, vigenciaFechafin: null, estatus: 'ACTIVO' },
+    { usuario: 'AMENDEZ', tipoUsuario: 'CAPTURISTA', vigenciaFini: null, vigenciaFechafin: null, estatus: 'ACTIVO' },
+    { usuario: 'ACONTRERAS', tipoUsuario: 'CONSULTA', vigenciaFini: null, vigenciaFechafin: null, estatus: 'INACTIVO' },
+];
+
+const sinPassword = ({ passwordHash: _passwordHash, ...usuario }: UsuarioGuardado): Usuario => usuario;
+
+/**
+ * Repositorio en memoria: se usa mientras no hay conexión a PostgreSQL.
+ * Los datos no sobreviven a un reinicio del servidor.
+ */
+export class MemoryUsersRepository implements UsersRepository {
+    private readonly store: UsuarioGuardado[] = [];
+    private nextId = 1;
+
+    constructor() {
+        const seedHash = bcrypt.hashSync(SEED_PASSWORD, 10);
+        for (const usuario of SEED_USUARIOS) {
+            this.store.push({ ...usuario, id: this.nextId++, passwordHash: seedHash });
+        }
+    }
+
+    listar(): Promise<Usuario[]> {
+        return Promise.resolve(this.store.map(sinPassword));
+    }
+
+    crear(input: UsuarioAltaInput): Promise<Usuario> {
+        const guardado: UsuarioGuardado = {
+            id: this.nextId++,
+            usuario: input.usuario,
+            tipoUsuario: input.tipoUsuario,
+            vigenciaFini: input.vigenciaFini,
+            vigenciaFechafin: input.vigenciaFechafin,
+            estatus: input.estatus,
+            passwordHash: input.passwordHash,
+        };
+        this.store.push(guardado);
+        return Promise.resolve(sinPassword(guardado));
+    }
+
+    modificar(id: number, input: UsuarioInput): Promise<Usuario | null> {
+        const guardado = this.store.find((usuario) => usuario.id === id);
+        if (!guardado) return Promise.resolve(null);
+
+        guardado.usuario = input.usuario;
+        guardado.tipoUsuario = input.tipoUsuario;
+        guardado.vigenciaFini = input.vigenciaFini;
+        guardado.vigenciaFechafin = input.vigenciaFechafin;
+        guardado.estatus = input.estatus;
+        if (input.passwordHash) guardado.passwordHash = input.passwordHash;
+
+        return Promise.resolve(sinPassword(guardado));
+    }
+
+    eliminar(id: number): Promise<boolean> {
+        const index = this.store.findIndex((usuario) => usuario.id === id);
+        if (index === -1) return Promise.resolve(false);
+        this.store.splice(index, 1);
+        return Promise.resolve(true);
+    }
+
+    existeUsuario(usuario: string, excluirId?: number): Promise<boolean> {
+        const encontrado = this.store.some(
+            (item) => item.usuario === usuario && item.id !== excluirId,
+        );
+        return Promise.resolve(encontrado);
+    }
+}

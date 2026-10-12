@@ -8,4 +8,10 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  server: {
+    proxy: {
+      // El backend (Express, puerto 3000) queda detrás de /api para evitar CORS.
+      '/api': 'http://localhost:3000',
+    },
+  },
 })

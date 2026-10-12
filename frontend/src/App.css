@@ -95,6 +95,11 @@ button:hover {
   height: 60vh;
 }
 
+/* Con 5 botones, "CERRAR SESIÓN" ocupa las dos columnas y cierra la cuadrícula. */
+#btn-logout {
+  grid-column: 1 / -1;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -427,6 +432,123 @@ th {
   flex-direction: column;
   align-items: center;
   gap: 14px;
+}
+
+/* ===== Pantalla de usuarios (alta y modificación en línea) ===== */
+
+.users-screen {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.users-hint {
+  margin: -14px 0 22px;
+  text-align: center;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.users-table .col-id {
+  width: 74px;
+  text-align: center;
+}
+
+.users-table .cell-input,
+.users-table .cell-select {
+  min-width: 150px;
+  padding: 8px 10px;
+  font-size: 1rem;
+}
+
+.users-table .cell-error {
+  border-color: var(--btn-red);
+}
+
+.field-error {
+  display: block;
+  margin-top: 6px;
+  white-space: normal;
+  color: #ff8a8a;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+
+.password-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.password-cell input {
+  min-width: 130px;
+}
+
+.btn-icon {
+  width: auto;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  background: var(--btn-gray);
+}
+
+.masked {
+  letter-spacing: 3px;
+  opacity: 0.85;
+}
+
+.status-on {
+  color: var(--btn-green);
+  font-weight: bold;
+}
+
+.status-off {
+  color: #ff8a8a;
+  font-weight: bold;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.row-actions button {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.row-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.row-editing {
+  background: var(--panel-bg);
+}
+
+.row-new {
+  outline: 1px dashed var(--btn-green);
+}
+
+.new-row-cell {
+  text-align: center;
+  background: var(--panel-bg);
+}
+
+.users-state {
+  text-align: center;
+  padding: 30px 15px;
+}
+
+.users-state-error {
+  color: #ff8a8a;
+}
+
+.users-state .inline-action {
+  display: block;
+  margin: 16px auto 0;
 }
 
 /* ===== Calendario (react-day-picker) ===== */

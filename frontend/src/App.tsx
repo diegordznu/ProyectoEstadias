@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { EmptyRows } from './components/filters/EmptyRows'
 import { FilterBar } from './components/filters/FilterBar'
+import { UsersScreen } from './components/users/UsersScreen'
 import { useTableFilters } from './hooks/useTableFilters'
 import { daysAgo, monthsAgo } from './lib/dates'
 
@@ -242,6 +243,9 @@ function App() {
             <button className="btn-blue" onClick={() => showScreen('screen-history')}>
               HISTORIAL<br />DE TRASPASOS
             </button>
+            <button className="btn-blue" onClick={() => showScreen('screen-users')}>
+              USUARIOS<br />DEL SISTEMA
+            </button>
             <button className="btn-red" id="btn-logout" onClick={handleLogout}>
               CERRAR SESIÓN
             </button>
@@ -463,6 +467,10 @@ function App() {
             VOLVER AL MENÚ
           </button>
         </div>
+      )}
+
+      {activeScreen === 'screen-users' && (
+        <UsersScreen onBack={() => showScreen('screen-menu')} onNotify={showMessage} />
       )}
     </>
   )
