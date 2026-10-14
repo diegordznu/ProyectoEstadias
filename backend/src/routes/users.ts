@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { Router, type Request, type Response } from 'express';
+import { motivoSinAcceso } from '../auth/session';
 import type { UsersRepository } from '../db/usersRepository';
 import { validarUsuario, type UsuarioPayload } from '../validation/users';
 
@@ -60,6 +61,16 @@ export function createUsersRouter(repository: UsersRepository): Router {
 
         const { password, ...valores } = resultado.value;
 
+        // Evita que el administrador se deje sin acceso a sí mismo.
+        if (id === req.usuario?.id) {
+            if (valores.tipoUsuario !== 'ADMINISTRADOR') {
+                return responderError(res, ['NO PUEDE QUITARSE EL ROL DE ADMINISTRADOR']);
+            }
+            if (motivoSinAcceso({ id, ...valores })) {
+                return responderError(res, ['NO PUEDE DESACTIVARSE NI DEJARSE FUERA DE VIGENCIA']);
+            }
+        }
+
         try {
             if (await repository.existeUsuario(valores.usuario, id)) {
                 return res.status(409).json({ errores: ['EL USUARIO YA EXISTE'] });
@@ -83,6 +94,9 @@ export function createUsersRouter(repository: UsersRepository): Router {
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id <= 0) {
             return res.status(400).json({ errores: ['EL IDENTIFICADOR NO ES VÁLIDO'] });
+        }
+        if (id === req.usuario?.id) {
+            return responderError(res, ['NO PUEDE ELIMINAR SU PROPIO USUARIO']);
         }
 
         try {

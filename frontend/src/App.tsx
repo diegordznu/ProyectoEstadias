@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import './App.css'
+import { fetchSession, login, logout } from './api/auth'
+import { setOnSessionExpired } from './api/client'
 import { EmptyRows } from './components/filters/EmptyRows'
 import { FilterBar } from './components/filters/FilterBar'
 import { UsersScreen } from './components/users/UsersScreen'
 import { useTableFilters } from './hooks/useTableFilters'
 import { daysAgo, monthsAgo } from './lib/dates'
+import type { Usuario } from './types/user'
 
 type InventoryItem = {
   sku: string
@@ -127,6 +130,10 @@ function App() {
   const [activeScreen, setActiveScreen] = useState('screen-login')
   const [loginUser, setLoginUser] = useState('')
   const [loginPass, setLoginPass] = useState('')
+  const [session, setSession] = useState<Usuario | null>(null)
+  // Mientras se consulta /auth/me no se muestra el login, para no parpadear al recargar.
+  const [checkingSession, setCheckingSession] = useState(true)
+  const [loggingIn, setLoggingIn] = useState(false)
   const [inventoryData] = useState<InventoryItem[]>(initialInventory)
   const [selectedPlant, setSelectedPlant] = useState<string | null>(null)
   const [message, setMessage] = useState({ text: '', isError: false, visible: false })
@@ -169,6 +176,30 @@ function App() {
     setMessage({ text, isError, visible: true })
   }
 
+  // La cookie sobrevive a recargar la página: si sigue vigente se entra directo al menú.
+  useEffect(() => {
+    fetchSession()
+      .then((usuario) => {
+        if (!usuario) return
+        setSession(usuario)
+        setActiveScreen('screen-menu')
+      })
+      .catch(() => showMessage('SIN CONEXIÓN CON EL SERVIDOR', true))
+      .finally(() => setCheckingSession(false))
+  }, [])
+
+  useEffect(() => {
+    setOnSessionExpired(() => {
+      setSession(null)
+      setSelectedPlant(null)
+      setActiveScreen('screen-login')
+      showMessage('SESIÓN EXPIRADA, INICIE SESIÓN DE NUEVO', true)
+    })
+    return () => setOnSessionExpired(null)
+  }, [])
+
+  const isAdmin = session?.tipoUsuario === 'ADMINISTRADOR'
+
   const showScreen = (screenId: string) => {
     setActiveScreen(screenId)
     if (screenId !== 'screen-transfer') {
@@ -176,14 +207,41 @@ function App() {
     }
   }
 
-  const handleLogin = () => {
-    showMessage('ACCESO CONCEDIDO')
-    setActiveScreen('screen-menu')
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (loggingIn) return
+
+    if (!loginUser.trim() || !loginPass.trim()) {
+      showMessage('INGRESE USUARIO Y CONTRASEÑA', true)
+      return
+    }
+
+    setLoggingIn(true)
+    try {
+      const usuario = await login(loginUser, loginPass)
+      setSession(usuario)
+      setLoginUser('')
+      setLoginPass('')
+      setActiveScreen('screen-menu')
+      showMessage('ACCESO CONCEDIDO')
+    } catch (error) {
+      setLoginPass('')
+      showMessage(error instanceof Error ? error.message : 'ERROR INESPERADO', true)
+    } finally {
+      setLoggingIn(false)
+    }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch {
+      // Aunque falle la red, del lado del cliente la sesión se cierra igual.
+    }
+    setSession(null)
     setLoginUser('')
     setLoginPass('')
+    setSelectedPlant(null)
     setActiveScreen('screen-login')
     showMessage('SESIÓN CERRADA')
   }
@@ -203,8 +261,8 @@ function App() {
         <h1>GRUPO ARMAS</h1>
       </header>
 
-      {activeScreen === 'screen-login' && (
-        <div id="screen-login" className="center-container">
+      {activeScreen === 'screen-login' && !checkingSession && (
+        <form id="screen-login" className="center-container" onSubmit={handleLogin}>
           <div className="form-group">
             <label>USUARIO:</label>
             <input
@@ -225,10 +283,10 @@ function App() {
               onChange={(e) => setLoginPass(e.target.value)}
             />
           </div>
-          <button className="btn-green" id="btn-login" onClick={handleLogin}>
-            INICIAR SESION
+          <button type="submit" className="btn-green" id="btn-login" disabled={loggingIn}>
+            {loggingIn ? 'VALIDANDO...' : 'INICIAR SESION'}
           </button>
-        </div>
+        </form>
       )}
 
       {activeScreen === 'screen-menu' && (
@@ -243,9 +301,11 @@ function App() {
             <button className="btn-blue" onClick={() => showScreen('screen-history')}>
               HISTORIAL<br />DE TRASPASOS
             </button>
-            <button className="btn-blue" onClick={() => showScreen('screen-users')}>
-              USUARIOS<br />DEL SISTEMA
-            </button>
+            {isAdmin && (
+              <button className="btn-blue" onClick={() => showScreen('screen-users')}>
+                USUARIOS<br />DEL SISTEMA
+              </button>
+            )}
             <button className="btn-red" id="btn-logout" onClick={handleLogout}>
               CERRAR SESIÓN
             </button>
@@ -469,7 +529,7 @@ function App() {
         </div>
       )}
 
-      {activeScreen === 'screen-users' && (
+      {activeScreen === 'screen-users' && isAdmin && (
         <UsersScreen onBack={() => showScreen('screen-menu')} onNotify={showMessage} />
       )}
     </>

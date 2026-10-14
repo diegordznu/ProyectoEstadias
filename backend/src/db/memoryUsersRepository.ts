@@ -2,13 +2,12 @@ import bcrypt from 'bcryptjs';
 import type {
     Usuario,
     UsuarioAltaInput,
+    UsuarioConPassword,
     UsuarioInput,
     UsersRepository,
 } from './usersRepository';
 
-interface UsuarioGuardado extends Usuario {
-    passwordHash: string;
-}
+type UsuarioGuardado = UsuarioConPassword;
 
 /** Contraseña inicial de los usuarios de ejemplo (solo mientras se usa la BD en memoria). */
 const SEED_PASSWORD = '123456';
@@ -43,6 +42,16 @@ export class MemoryUsersRepository implements UsersRepository {
 
     listar(): Promise<Usuario[]> {
         return Promise.resolve(this.store.map(sinPassword));
+    }
+
+    buscarPorId(id: number): Promise<Usuario | null> {
+        const guardado = this.store.find((usuario) => usuario.id === id);
+        return Promise.resolve(guardado ? sinPassword(guardado) : null);
+    }
+
+    buscarPorUsuario(usuario: string): Promise<UsuarioConPassword | null> {
+        const guardado = this.store.find((item) => item.usuario === usuario);
+        return Promise.resolve(guardado ? { ...guardado } : null);
     }
 
     crear(input: UsuarioAltaInput): Promise<Usuario> {

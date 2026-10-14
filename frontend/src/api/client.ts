@@ -11,6 +11,13 @@ export class ApiError extends Error {
   }
 }
 
+let onSessionExpired: (() => void) | null = null
+
+/** Se llama cuando el servidor responde 401 fuera del login (la sesión expiró o se revocó). */
+export function setOnSessionExpired(handler: (() => void) | null): void {
+  onSessionExpired = handler
+}
+
 function parseBody(text: string): unknown {
   if (!text) return null
   try {
@@ -40,6 +47,8 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   }
 
   const data = parseBody(await response.text())
+
+  if (response.status === 401 && !path.startsWith('/auth/')) onSessionExpired?.()
 
   if (!response.ok) throw new ApiError(errorMessage(data, response.status), response.status)
 

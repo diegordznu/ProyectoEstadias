@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 import type {
     Usuario,
     UsuarioAltaInput,
+    UsuarioConPassword,
     UsuarioInput,
     UsersRepository,
 } from './usersRepository';
@@ -32,6 +33,27 @@ export class PostgresUsersRepository implements UsersRepository {
     async listar(): Promise<Usuario[]> {
         const { rows } = await this.pool.query<UsuarioRow>(`${SELECT_USUARIOS} ORDER BY id`);
         return rows;
+    }
+
+    async buscarPorId(id: number): Promise<Usuario | null> {
+        const { rows } = await this.pool.query<UsuarioRow>(`${SELECT_USUARIOS} WHERE id = $1`, [id]);
+        return rows[0] ?? null;
+    }
+
+    async buscarPorUsuario(usuario: string): Promise<UsuarioConPassword | null> {
+        const { rows } = await this.pool.query<UsuarioConPassword>(
+            `SELECT id,
+                    usuario,
+                    password_hash AS "passwordHash",
+                    tipo_usuario AS "tipoUsuario",
+                    vigencia_fini::text AS "vigenciaFini",
+                    vigencia_fechafin::text AS "vigenciaFechafin",
+                    estatus
+               FROM usuarios
+              WHERE usuario = $1`,
+            [usuario],
+        );
+        return rows[0] ?? null;
     }
 
     async crear(input: UsuarioAltaInput): Promise<Usuario> {

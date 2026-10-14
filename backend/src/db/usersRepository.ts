@@ -34,6 +34,11 @@ export interface UsuarioAltaInput extends UsuarioInput {
     passwordHash: string;
 }
 
+/** Usuario con su hash: solo para verificar credenciales, nunca se envía al cliente. */
+export interface UsuarioConPassword extends Usuario {
+    passwordHash: string;
+}
+
 /**
  * Capa de acceso a los usuarios del sistema.
  * Hoy existen dos implementaciones (memoria y PostgreSQL) para poder
@@ -41,6 +46,10 @@ export interface UsuarioAltaInput extends UsuarioInput {
  */
 export interface UsersRepository {
     listar(): Promise<Usuario[]>;
+    /** Devuelve null cuando el id no existe. */
+    buscarPorId(id: number): Promise<Usuario | null>;
+    /** Incluye el hash para el login. Devuelve null cuando no existe. */
+    buscarPorUsuario(usuario: string): Promise<UsuarioConPassword | null>;
     crear(input: UsuarioAltaInput): Promise<Usuario>;
     /** Devuelve null cuando el id no existe. */
     modificar(id: number, input: UsuarioInput): Promise<Usuario | null>;
