@@ -95,8 +95,9 @@ button:hover {
   height: 60vh;
 }
 
-/* Con 5 botones, "CERRAR SESIÓN" ocupa las dos columnas y cierra la cuadrícula. */
-#btn-logout {
+/* Si queda solo en su fila (admin, 5 botones), "CERRAR SESIÓN" ocupa las dos columnas.
+   Sin admin rellena el hueco junto al último botón. */
+#btn-logout:nth-child(odd) {
   grid-column: 1 / -1;
 }
 
