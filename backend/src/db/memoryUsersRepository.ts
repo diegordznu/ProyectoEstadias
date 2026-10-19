@@ -55,15 +55,7 @@ export class MemoryUsersRepository implements UsersRepository {
     }
 
     crear(input: UsuarioAltaInput): Promise<Usuario> {
-        const guardado: UsuarioGuardado = {
-            id: this.nextId++,
-            usuario: input.usuario,
-            tipoUsuario: input.tipoUsuario,
-            vigenciaFini: input.vigenciaFini,
-            vigenciaFechafin: input.vigenciaFechafin,
-            estatus: input.estatus,
-            passwordHash: input.passwordHash,
-        };
+        const guardado: UsuarioGuardado = { ...input, id: this.nextId++ };
         this.store.push(guardado);
         return Promise.resolve(sinPassword(guardado));
     }
@@ -72,12 +64,8 @@ export class MemoryUsersRepository implements UsersRepository {
         const guardado = this.store.find((usuario) => usuario.id === id);
         if (!guardado) return Promise.resolve(null);
 
-        guardado.usuario = input.usuario;
-        guardado.tipoUsuario = input.tipoUsuario;
-        guardado.vigenciaFini = input.vigenciaFini;
-        guardado.vigenciaFechafin = input.vigenciaFechafin;
-        guardado.estatus = input.estatus;
-        if (input.passwordHash) guardado.passwordHash = input.passwordHash;
+        const { passwordHash, ...datos } = input;
+        Object.assign(guardado, datos, passwordHash ? { passwordHash } : {});
 
         return Promise.resolve(sinPassword(guardado));
     }

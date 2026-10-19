@@ -26,7 +26,7 @@ const USUARIO_MINIMO = 3;
 const USUARIO_MAXIMO = 30;
 const FECHA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-function soloTexto(valor: unknown): string {
+export function soloTexto(valor: unknown): string {
     return typeof valor === 'string' ? valor.trim() : '';
 }
 
@@ -55,19 +55,12 @@ export function validarUsuario(
         errores.push(`EL USUARIO DEBE TENER ENTRE ${USUARIO_MINIMO} Y ${USUARIO_MAXIMO} CARACTERES`);
     }
 
-    const passwordCruda = soloTexto(payload.password);
-    let password: string | null = passwordCruda;
-    if (requierePassword) {
-        if (!passwordCruda) {
-            errores.push('LA CONTRASEÑA ES OBLIGATORIA');
-        } else if (passwordCruda.length < PASSWORD_MINIMA) {
-            errores.push(`LA CONTRASEÑA DEBE TENER AL MENOS ${PASSWORD_MINIMA} CARACTERES`);
-        }
-    } else if (passwordCruda && passwordCruda.length < PASSWORD_MINIMA) {
+    // En una modificación sin contraseña (null) se conserva la actual.
+    const password = soloTexto(payload.password) || null;
+    if (!password) {
+        if (requierePassword) errores.push('LA CONTRASEÑA ES OBLIGATORIA');
+    } else if (password.length < PASSWORD_MINIMA) {
         errores.push(`LA CONTRASEÑA DEBE TENER AL MENOS ${PASSWORD_MINIMA} CARACTERES`);
-    } else if (!passwordCruda) {
-        // En una modificación sin contraseña se conserva la actual.
-        password = null;
     }
 
     const tipoUsuario = soloTexto(payload.tipoUsuario) as UsuarioTipo;

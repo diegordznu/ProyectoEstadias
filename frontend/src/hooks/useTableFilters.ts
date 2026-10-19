@@ -26,26 +26,26 @@ export function useTableFilters<T>({ rows, materialKey, dateKey }: UseTableFilte
     return Array.from(unique).sort((a, b) => a.localeCompare(b))
   }, [rows, materialKey])
 
+  const range = resolvePreset(preset, customRange)
+  const { from, to } = range
+
   const filtered = useMemo(() => {
-    const range = resolvePreset(preset, customRange)
     const materialFilter = materials === null ? null : new Set(materials)
 
     return rows.filter((row) => {
-      if (dateKey && (range.from || range.to)) {
+      if (dateKey && (from || to)) {
         const value = dateKey(row)
-        if (range.from && value < range.from) return false
-        if (range.to && value > range.to) return false
+        if (from && value < from) return false
+        if (to && value > to) return false
       }
 
       if (materialFilter && !materialFilter.has(materialKey(row))) return false
 
       return true
     })
-  }, [rows, dateKey, materialKey, preset, customRange, materials])
+  }, [rows, dateKey, materialKey, from, to, materials])
 
-  const range = resolvePreset(preset, customRange)
-  const dateActive = Boolean(range.from || range.to)
-  const isActive = dateActive || materials !== null
+  const isActive = Boolean(from || to) || materials !== null
 
   const reset = useCallback(() => {
     setPreset('all')

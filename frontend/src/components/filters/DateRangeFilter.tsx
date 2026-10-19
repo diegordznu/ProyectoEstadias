@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import { es } from 'react-day-picker/locale/es'
 import {
@@ -8,6 +8,7 @@ import {
   type DateRangeValue,
   type ResolvedRange,
 } from '../../lib/dates'
+import { useClickOutside } from '../../hooks/useClickOutside'
 
 export type DateRangeFilterProps = {
   preset: DatePreset
@@ -25,20 +26,7 @@ export function DateRangeFilter({
   onCustomRangeChange,
 }: DateRangeFilterProps) {
   const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-
-    const handleOutside = (event: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-
-    document.addEventListener('pointerdown', handleOutside)
-    return () => document.removeEventListener('pointerdown', handleOutside)
-  }, [open])
+  const rootRef = useClickOutside(open, setOpen)
 
   const selected: DateRange = { from: customRange.from, to: customRange.to }
   const label = rangeLabel(range)

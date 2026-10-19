@@ -7,65 +7,40 @@ import type {
     UsersRepository,
 } from './usersRepository';
 
-interface UsuarioRow {
-    id: number;
-    usuario: string;
-    tipoUsuario: Usuario['tipoUsuario'];
-    vigenciaFini: string | null;
-    vigenciaFechafin: string | null;
-    estatus: Usuario['estatus'];
-}
-
-const SELECT_USUARIOS = `
-    SELECT id,
+const COLUMNAS = `id,
            usuario,
            tipo_usuario AS "tipoUsuario",
            vigencia_fini::text AS "vigenciaFini",
            vigencia_fechafin::text AS "vigenciaFechafin",
-           estatus
-      FROM usuarios
-`;
+           estatus`;
 
 /** Implementación sobre la BD propia (PostgreSQL). Requiere el esquema de sql/01_usuarios.sql. */
 export class PostgresUsersRepository implements UsersRepository {
     constructor(private readonly pool: Pool) {}
 
     async listar(): Promise<Usuario[]> {
-        const { rows } = await this.pool.query<UsuarioRow>(`${SELECT_USUARIOS} ORDER BY id`);
+        const { rows } = await this.pool.query<Usuario>(`SELECT ${COLUMNAS} FROM usuarios ORDER BY id`);
         return rows;
     }
 
     async buscarPorId(id: number): Promise<Usuario | null> {
-        const { rows } = await this.pool.query<UsuarioRow>(`${SELECT_USUARIOS} WHERE id = $1`, [id]);
+        const { rows } = await this.pool.query<Usuario>(`SELECT ${COLUMNAS} FROM usuarios WHERE id = $1`, [id]);
         return rows[0] ?? null;
     }
 
     async buscarPorUsuario(usuario: string): Promise<UsuarioConPassword | null> {
         const { rows } = await this.pool.query<UsuarioConPassword>(
-            `SELECT id,
-                    usuario,
-                    password_hash AS "passwordHash",
-                    tipo_usuario AS "tipoUsuario",
-                    vigencia_fini::text AS "vigenciaFini",
-                    vigencia_fechafin::text AS "vigenciaFechafin",
-                    estatus
-               FROM usuarios
-              WHERE usuario = $1`,
+            `SELECT ${COLUMNAS}, password_hash AS "passwordHash" FROM usuarios WHERE usuario = $1`,
             [usuario],
         );
         return rows[0] ?? null;
     }
 
     async crear(input: UsuarioAltaInput): Promise<Usuario> {
-        const { rows } = await this.pool.query<UsuarioRow>(
+        const { rows } = await this.pool.query<Usuario>(
             `INSERT INTO usuarios (usuario, password_hash, tipo_usuario, vigencia_fini, vigencia_fechafin, estatus)
              VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING id,
-                       usuario,
-                       tipo_usuario AS "tipoUsuario",
-                       vigencia_fini::text AS "vigenciaFini",
-                       vigencia_fechafin::text AS "vigenciaFechafin",
-                       estatus`,
+             RETURNING ${COLUMNAS}`,
             [
                 input.usuario,
                 input.passwordHash,
@@ -79,7 +54,7 @@ export class PostgresUsersRepository implements UsersRepository {
     }
 
     async modificar(id: number, input: UsuarioInput): Promise<Usuario | null> {
-        const { rows } = await this.pool.query<UsuarioRow>(
+        const { rows } = await this.pool.query<Usuario>(
             `UPDATE usuarios
                 SET usuario = $1,
                     tipo_usuario = $2,
@@ -88,12 +63,7 @@ export class PostgresUsersRepository implements UsersRepository {
                     estatus = $5,
                     password_hash = COALESCE($6, password_hash)
               WHERE id = $7
-             RETURNING id,
-                       usuario,
-                       tipo_usuario AS "tipoUsuario",
-                       vigencia_fini::text AS "vigenciaFini",
-                       vigencia_fechafin::text AS "vigenciaFechafin",
-                       estatus`,
+             RETURNING ${COLUMNAS}`,
             [
                 input.usuario,
                 input.tipoUsuario,

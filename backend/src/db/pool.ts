@@ -11,24 +11,13 @@ export function isDatabaseConfigured(): boolean {
 }
 
 export function getPool(): Pool {
-    if (!pool) {
-        const url = process.env.DATABASE_URL?.trim();
-        pool = url
-            ? new Pool({ connectionString: url })
-            : new Pool({
-                  host: process.env.PGHOST,
-                  port: Number(process.env.PGPORT ?? 5432),
-                  user: process.env.PGUSER,
-                  password: process.env.PGPASSWORD,
-                  database: process.env.PGDATABASE,
-              });
-    }
+    // Sin DATABASE_URL, pg lee solo las variables PG*.
+    pool ??= new Pool({ connectionString: process.env.DATABASE_URL?.trim() || undefined });
     return pool;
 }
 
 export async function closePool(): Promise<void> {
-    if (!pool) return;
     const actual = pool;
     pool = null;
-    await actual.end();
+    await actual?.end();
 }

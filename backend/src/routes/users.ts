@@ -15,6 +15,14 @@ function responderError(res: Response, errores: string[]): void {
     res.status(400).json({ errores });
 }
 
+/** Id positivo de la URL, o null (ya respondió 400) si no es válido. */
+function leerId(req: Request, res: Response): number | null {
+    const id = Number(req.params.id);
+    if (Number.isInteger(id) && id > 0) return id;
+    responderError(res, ['EL IDENTIFICADOR NO ES VÁLIDO']);
+    return null;
+}
+
 /** Router con el CRUD de usuarios del sistema (alta, consulta, modificación y baja). */
 export function createUsersRouter(repository: UsersRepository): Router {
     const router = Router();
@@ -34,14 +42,13 @@ export function createUsersRouter(repository: UsersRepository): Router {
         if (!resultado.ok) return responderError(res, resultado.errores);
 
         const { password, ...valores } = resultado.value;
-        if (!password) return responderError(res, ['LA CONTRASEÑA ES OBLIGATORIA']);
 
         try {
             if (await repository.existeUsuario(valores.usuario)) {
                 return res.status(409).json({ errores: ['EL USUARIO YA EXISTE'] });
             }
 
-            const passwordHash = await bcrypt.hash(password, ROUNDS);
+            const passwordHash = await bcrypt.hash(password!, ROUNDS);
             const usuario = await repository.crear({ ...valores, passwordHash });
             res.status(201).json(usuario);
         } catch (error) {
@@ -51,10 +58,8 @@ export function createUsersRouter(repository: UsersRepository): Router {
     });
 
     router.put('/:id', async (req: Request, res: Response) => {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-            return res.status(400).json({ errores: ['EL IDENTIFICADOR NO ES VÁLIDO'] });
-        }
+        const id = leerId(req, res);
+        if (id === null) return;
 
         const resultado = validarUsuario(cuerpo(req), { requierePassword: false });
         if (!resultado.ok) return responderError(res, resultado.errores);
@@ -91,10 +96,8 @@ export function createUsersRouter(repository: UsersRepository): Router {
     });
 
     router.delete('/:id', async (req: Request, res: Response) => {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-            return res.status(400).json({ errores: ['EL IDENTIFICADOR NO ES VÁLIDO'] });
-        }
+        const id = leerId(req, res);
+        if (id === null) return;
         if (id === req.usuario?.id) {
             return responderError(res, ['NO PUEDE ELIMINAR SU PROPIO USUARIO']);
         }

@@ -212,11 +212,6 @@ function App() {
     event.preventDefault()
     if (loggingIn) return
 
-    if (!loginUser.trim() || !loginPass.trim()) {
-      showMessage('INGRESE USUARIO Y CONTRASEÑA', true)
-      return
-    }
-
     setLoggingIn(true)
     try {
       const usuario = await login(loginUser, loginPass)
@@ -246,7 +241,6 @@ function App() {
     setActiveScreen('screen-login')
     showMessage('SESIÓN CERRADA')
   }
-
 
   return (
     <>
@@ -322,17 +316,7 @@ function App() {
         <div id="screen-inventory">
           <h2>INVENTARIO UNIFICADO</h2>
 
-          <FilterBar
-            total={inventoryFilters.total}
-            shown={inventoryFilters.filtered.length}
-            isActive={inventoryFilters.isActive}
-            materials={{
-              options: inventoryFilters.options,
-              value: inventoryFilters.materials,
-              onChange: inventoryFilters.setMaterials,
-            }}
-            onReset={inventoryFilters.reset}
-          />
+          <FilterBar filters={inventoryFilters} />
 
           <div className="table-container">
             <table>
@@ -411,24 +395,7 @@ function App() {
                 </button>
               </div>
 
-              <FilterBar
-                total={plantFilters.total}
-                shown={plantFilters.filtered.length}
-                isActive={plantFilters.isActive}
-                materials={{
-                  options: plantFilters.options,
-                  value: plantFilters.materials,
-                  onChange: plantFilters.setMaterials,
-                }}
-                date={{
-                  preset: plantFilters.preset,
-                  customRange: plantFilters.customRange,
-                  range: plantFilters.range,
-                  onPresetChange: plantFilters.setPreset,
-                  onCustomRangeChange: plantFilters.setCustomRange,
-                }}
-                onReset={plantFilters.reset}
-              />
+              <FilterBar filters={plantFilters} withDate />
 
               <div className="table-container plant-table-container">
                 <table>
@@ -474,24 +441,7 @@ function App() {
         <div id="screen-history">
           <h2>HISTORIAL RECIENTE</h2>
 
-          <FilterBar
-            total={historyFilters.total}
-            shown={historyFilters.filtered.length}
-            isActive={historyFilters.isActive}
-            materials={{
-              options: historyFilters.options,
-              value: historyFilters.materials,
-              onChange: historyFilters.setMaterials,
-            }}
-            date={{
-              preset: historyFilters.preset,
-              customRange: historyFilters.customRange,
-              range: historyFilters.range,
-              onPresetChange: historyFilters.setPreset,
-              onCustomRangeChange: historyFilters.setCustomRange,
-            }}
-            onReset={historyFilters.reset}
-          />
+          <FilterBar filters={historyFilters} withDate />
 
           <div className="table-container">
             <table>

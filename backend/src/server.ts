@@ -14,7 +14,6 @@ const port = Number(process.env.PORT ?? 3000);
 // Sin el secreto no se pueden firmar sesiones: mejor fallar al arrancar que en el primer login.
 requiredEnv('JWT_SECRET');
 
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.get('/', (_req: Request, res: Response) => {

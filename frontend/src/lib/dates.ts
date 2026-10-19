@@ -38,33 +38,21 @@ export function monthsAgo(months: number, base: Date = new Date()): string {
  */
 export function resolvePreset(preset: DatePreset, custom: DateRangeValue = {}): ResolvedRange {
   if (preset === 'custom') {
-    return {
-      from: custom.from ? formatDateISO(custom.from) : undefined,
-      to: custom.to ? formatDateISO(custom.to) : undefined,
-    }
+    return { from: custom.from && formatDateISO(custom.from), to: custom.to && formatDateISO(custom.to) }
   }
-
   if (preset === 'all') return {}
 
   const today = new Date()
-  const to = formatDateISO(today)
+  return { from: PRESET_FROM[preset](today), to: formatDateISO(today) }
+}
 
-  switch (preset) {
-    case 'today':
-      return { from: to, to }
-    case 'd7':
-      return { from: daysAgo(7, today), to }
-    case 'd15':
-      return { from: daysAgo(15, today), to }
-    case 'd30':
-      return { from: daysAgo(30, today), to }
-    case 'm3':
-      return { from: monthsAgo(3, today), to }
-    case 'm6':
-      return { from: monthsAgo(6, today), to }
-    default:
-      return {}
-  }
+const PRESET_FROM: Record<Exclude<DatePreset, 'all' | 'custom'>, (today: Date) => string> = {
+  today: (today) => formatDateISO(today),
+  d7: (today) => daysAgo(7, today),
+  d15: (today) => daysAgo(15, today),
+  d30: (today) => daysAgo(30, today),
+  m3: (today) => monthsAgo(3, today),
+  m6: (today) => monthsAgo(6, today),
 }
 
 export function rangeLabel(range: ResolvedRange): string | null {

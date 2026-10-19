@@ -114,32 +114,28 @@ export function UsersScreen({ onBack, onNotify }: UsersScreenProps) {
     load()
   }
 
-  const closeDraft = () => {
-    setDraft(null)
+  const openDraft = (next: Draft | null, formValues = emptyValues()) => {
+    setValues(formValues)
     setFieldErrors({})
     setShowPassword(false)
+    setDraft(next)
   }
 
-  const startNew = () => {
-    setValues(emptyValues())
-    setFieldErrors({})
-    setShowPassword(false)
-    setDraft({ mode: 'new' })
-  }
+  const closeDraft = () => openDraft(null)
+  const startNew = () => openDraft({ mode: 'new' })
 
-  const startEdit = (usuario: Usuario) => {
-    setValues({
-      usuario: usuario.usuario,
-      password: '',
-      tipoUsuario: usuario.tipoUsuario,
-      vigenciaFini: usuario.vigenciaFini ?? '',
-      vigenciaFechafin: usuario.vigenciaFechafin ?? '',
-      estatus: usuario.estatus,
-    })
-    setFieldErrors({})
-    setShowPassword(false)
-    setDraft({ mode: 'edit', id: usuario.id })
-  }
+  const startEdit = (usuario: Usuario) =>
+    openDraft(
+      { mode: 'edit', id: usuario.id },
+      {
+        ...usuario,
+        password: '',
+        vigenciaFini: usuario.vigenciaFini ?? '',
+        vigenciaFechafin: usuario.vigenciaFechafin ?? '',
+      },
+    )
+
+  const isEditing = (id: number) => draft?.mode === 'edit' && draft.id === id
 
   const patch = (campo: keyof FormValues, valor: string) => {
     setValues((prev) => ({ ...prev, [campo]: valor }))
@@ -194,7 +190,7 @@ export function UsersScreen({ onBack, onNotify }: UsersScreenProps) {
     const confirmado = window.confirm(`¿ELIMINAR EL USUARIO "${usuario.usuario}"?`)
     if (!confirmado) return
 
-    if (draft?.mode === 'edit' && draft.id === usuario.id) closeDraft()
+    if (isEditing(usuario.id)) closeDraft()
 
     setDeletingId(usuario.id)
     try {
@@ -208,10 +204,112 @@ export function UsersScreen({ onBack, onNotify }: UsersScreenProps) {
     }
   }
 
-  const isEditing = (id: number) => draft?.mode === 'edit' && draft.id === id
   const adding = draft?.mode === 'new'
   const errorClass = (campo: keyof FormValues) =>
     fieldErrors[campo] ? 'cell-input cell-error' : 'cell-input'
+
+  /** Fila editable: sin usuario es la fila de alta. */
+  const editRow = (usuario?: Usuario) => (
+    <tr key={usuario?.id ?? 'new'} className={usuario ? 'row-editing' : 'row-editing row-new'}>
+      <td className="col-id">{usuario?.id ?? 'NUEVO'}</td>
+      <td>
+        <input
+          type="text"
+          className={errorClass('usuario')}
+          value={values.usuario}
+          aria-label="USUARIO"
+          maxLength={USUARIO_MAXIMO}
+          placeholder={usuario ? undefined : 'NOMBRE DE USUARIO'}
+          onChange={(e) => patch('usuario', e.target.value)}
+        />
+        {fieldErrors.usuario && <span className="field-error">{fieldErrors.usuario}</span>}
+      </td>
+      <td>
+        <div className="password-cell">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            className={errorClass('password')}
+            value={values.password}
+            aria-label="CONTRASEÑA"
+            placeholder={usuario ? 'SIN CAMBIOS' : 'CONTRASEÑA'}
+            onChange={(e) => patch('password', e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+            {showPassword ? 'OCULTAR' : 'VER'}
+          </button>
+        </div>
+        {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
+      </td>
+      <td>
+        <select
+          className="cell-select"
+          value={values.tipoUsuario}
+          aria-label="TIPO DE USUARIO"
+          onChange={(e) => patch('tipoUsuario', e.target.value)}
+        >
+          {TIPO_USUARIO_OPCIONES.map((tipo) => (
+            <option key={tipo} value={tipo}>
+              {tipo}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td>
+        <input
+          type="date"
+          className="cell-input"
+          value={values.vigenciaFini}
+          aria-label="VIGENCIA INICIAL"
+          onChange={(e) => patch('vigenciaFini', e.target.value)}
+        />
+      </td>
+      <td>
+        <input
+          type="date"
+          className={errorClass('vigenciaFechafin')}
+          value={values.vigenciaFechafin}
+          aria-label="VIGENCIA FINAL"
+          onChange={(e) => patch('vigenciaFechafin', e.target.value)}
+        />
+        {fieldErrors.vigenciaFechafin && (
+          <span className="field-error">{fieldErrors.vigenciaFechafin}</span>
+        )}
+      </td>
+      <td>
+        <select
+          className="cell-select"
+          value={values.estatus}
+          aria-label="ESTATUS"
+          onChange={(e) => patch('estatus', e.target.value)}
+        >
+          {ESTATUS_OPCIONES.map((estatus) => (
+            <option key={estatus} value={estatus}>
+              {estatus}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td>
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn-green"
+            disabled={saving}
+            onClick={() => void save()}
+          >
+            {saving ? 'GUARDANDO...' : 'GUARDAR'}
+          </button>
+          <button type="button" className="btn-gray" disabled={saving} onClick={closeDraft}>
+            CANCELAR
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
 
   return (
     <div id="screen-users" className="users-screen">
@@ -264,104 +362,7 @@ export function UsersScreen({ onBack, onNotify }: UsersScreenProps) {
 
                 {users.map((usuario) =>
                   isEditing(usuario.id) ? (
-                    <tr key={usuario.id} className="row-editing">
-                      <td className="col-id">{usuario.id}</td>
-                      <td>
-                        <input
-                          type="text"
-                          className={errorClass('usuario')}
-                          value={values.usuario}
-                          aria-label="USUARIO"
-                          maxLength={USUARIO_MAXIMO}
-                          onChange={(e) => patch('usuario', e.target.value)}
-                        />
-                        {fieldErrors.usuario && <span className="field-error">{fieldErrors.usuario}</span>}
-                      </td>
-                      <td>
-                        <div className="password-cell">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            className={errorClass('password')}
-                            value={values.password}
-                            aria-label="CONTRASEÑA"
-                            placeholder="SIN CAMBIOS"
-                            onChange={(e) => patch('password', e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            className="btn-icon"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                          >
-                            {showPassword ? 'OCULTAR' : 'VER'}
-                          </button>
-                        </div>
-                        {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
-                      </td>
-                      <td>
-                        <select
-                          className="cell-select"
-                          value={values.tipoUsuario}
-                          aria-label="TIPO DE USUARIO"
-                          onChange={(e) => patch('tipoUsuario', e.target.value)}
-                        >
-                          {TIPO_USUARIO_OPCIONES.map((tipo) => (
-                            <option key={tipo} value={tipo}>
-                              {tipo}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          type="date"
-                          className="cell-input"
-                          value={values.vigenciaFini}
-                          aria-label="VIGENCIA INICIAL"
-                          onChange={(e) => patch('vigenciaFini', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="date"
-                          className={errorClass('vigenciaFechafin')}
-                          value={values.vigenciaFechafin}
-                          aria-label="VIGENCIA FINAL"
-                          onChange={(e) => patch('vigenciaFechafin', e.target.value)}
-                        />
-                        {fieldErrors.vigenciaFechafin && (
-                          <span className="field-error">{fieldErrors.vigenciaFechafin}</span>
-                        )}
-                      </td>
-                      <td>
-                        <select
-                          className="cell-select"
-                          value={values.estatus}
-                          aria-label="ESTATUS"
-                          onChange={(e) => patch('estatus', e.target.value)}
-                        >
-                          {ESTATUS_OPCIONES.map((estatus) => (
-                            <option key={estatus} value={estatus}>
-                              {estatus}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          <button
-                            type="button"
-                            className="btn-green"
-                            disabled={saving}
-                            onClick={() => void save()}
-                          >
-                            {saving ? 'GUARDANDO...' : 'GUARDAR'}
-                          </button>
-                          <button type="button" className="btn-gray" disabled={saving} onClick={closeDraft}>
-                            CANCELAR
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    editRow(usuario)
                   ) : (
                     <tr key={usuario.id}>
                       <td className="col-id">{usuario.id}</td>
@@ -399,105 +400,7 @@ export function UsersScreen({ onBack, onNotify }: UsersScreenProps) {
                 )}
 
                 {adding ? (
-                  <tr className="row-editing row-new">
-                    <td className="col-id">NUEVO</td>
-                    <td>
-                      <input
-                        type="text"
-                        className={errorClass('usuario')}
-                        value={values.usuario}
-                        aria-label="USUARIO"
-                        maxLength={USUARIO_MAXIMO}
-                        placeholder="NOMBRE DE USUARIO"
-                        onChange={(e) => patch('usuario', e.target.value)}
-                      />
-                      {fieldErrors.usuario && <span className="field-error">{fieldErrors.usuario}</span>}
-                    </td>
-                    <td>
-                      <div className="password-cell">
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          className={errorClass('password')}
-                          value={values.password}
-                          aria-label="CONTRASEÑA"
-                          placeholder="CONTRASEÑA"
-                          onChange={(e) => patch('password', e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="btn-icon"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                        >
-                          {showPassword ? 'OCULTAR' : 'VER'}
-                        </button>
-                      </div>
-                      {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
-                    </td>
-                    <td>
-                      <select
-                        className="cell-select"
-                        value={values.tipoUsuario}
-                        aria-label="TIPO DE USUARIO"
-                        onChange={(e) => patch('tipoUsuario', e.target.value)}
-                      >
-                        {TIPO_USUARIO_OPCIONES.map((tipo) => (
-                          <option key={tipo} value={tipo}>
-                            {tipo}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        type="date"
-                        className="cell-input"
-                        value={values.vigenciaFini}
-                        aria-label="VIGENCIA INICIAL"
-                        onChange={(e) => patch('vigenciaFini', e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="date"
-                        className={errorClass('vigenciaFechafin')}
-                        value={values.vigenciaFechafin}
-                        aria-label="VIGENCIA FINAL"
-                        onChange={(e) => patch('vigenciaFechafin', e.target.value)}
-                      />
-                      {fieldErrors.vigenciaFechafin && (
-                        <span className="field-error">{fieldErrors.vigenciaFechafin}</span>
-                      )}
-                    </td>
-                    <td>
-                      <select
-                        className="cell-select"
-                        value={values.estatus}
-                        aria-label="ESTATUS"
-                        onChange={(e) => patch('estatus', e.target.value)}
-                      >
-                        {ESTATUS_OPCIONES.map((estatus) => (
-                          <option key={estatus} value={estatus}>
-                            {estatus}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="btn-green"
-                          disabled={saving}
-                          onClick={() => void save()}
-                        >
-                          {saving ? 'GUARDANDO...' : 'GUARDAR'}
-                        </button>
-                        <button type="button" className="btn-gray" disabled={saving} onClick={closeDraft}>
-                          CANCELAR
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  editRow()
                 ) : (
                   !loading &&
                   !loadError && (

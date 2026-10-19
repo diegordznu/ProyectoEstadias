@@ -4,6 +4,7 @@ import { limpiarFallos, registrarFallo, tiempoBloqueado } from '../auth/loginAtt
 import { requireAuth } from '../auth/middleware';
 import { SESSION_COOKIE, crearToken, motivoSinAcceso, sessionCookieOptions } from '../auth/session';
 import type { UsersRepository } from '../db/usersRepository';
+import { soloTexto } from '../validation/users';
 
 const CREDENCIALES_INCORRECTAS = 'USUARIO O CONTRASEÑA INCORRECTOS';
 
@@ -13,16 +14,14 @@ const CREDENCIALES_INCORRECTAS = 'USUARIO O CONTRASEÑA INCORRECTOS';
  */
 const HASH_FALSO = bcrypt.hashSync('usuario-inexistente', 10);
 
-const texto = (valor: unknown): string => (typeof valor === 'string' ? valor.trim() : '');
-
 /** Router de sesión: login, logout y consulta del usuario actual. */
 export function createAuthRouter(repository: UsersRepository): Router {
     const router = Router();
 
     router.post('/login', async (req: Request, res: Response) => {
         const body = (req.body ?? {}) as { usuario?: unknown; password?: unknown };
-        const usuario = texto(body.usuario).toUpperCase();
-        const password = texto(body.password);
+        const usuario = soloTexto(body.usuario).toUpperCase();
+        const password = soloTexto(body.password);
 
         if (!usuario || !password) {
             return res.status(400).json({ errores: ['INGRESE USUARIO Y CONTRASEÑA'] });

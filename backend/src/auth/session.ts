@@ -38,12 +38,7 @@ export function leerToken(token: string): number | null {
 }
 
 /** Fecha local del servidor en formato 'YYYY-MM-DD', comparable con las vigencias. */
-function hoy(): string {
-    const ahora = new Date();
-    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-    const dia = String(ahora.getDate()).padStart(2, '0');
-    return `${ahora.getFullYear()}-${mes}-${dia}`;
-}
+const hoy = (): string => new Date().toLocaleDateString('en-CA');
 
 /** Motivo por el que el usuario no puede entrar al sistema, o null si tiene acceso. */
 export function motivoSinAcceso(usuario: Usuario): string | null {

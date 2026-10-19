@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useClickOutside } from '../../hooks/useClickOutside'
 
 export type MaterialFilterProps = {
   /** Todos los materiales disponibles en la tabla. */
@@ -19,20 +20,7 @@ function normalize(text: string): string {
 export function MaterialFilter({ options, value, onChange, label = 'MATERIAL' }: MaterialFilterProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-
-    const handleOutside = (event: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-
-    document.addEventListener('pointerdown', handleOutside)
-    return () => document.removeEventListener('pointerdown', handleOutside)
-  }, [open])
+  const rootRef = useClickOutside(open, setOpen)
 
   const selected = useMemo(() => new Set(value ?? options), [value, options])
 

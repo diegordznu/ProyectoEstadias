@@ -1,34 +1,37 @@
-import { DateRangeFilter, type DateRangeFilterProps } from './DateRangeFilter'
-import { MaterialFilter, type MaterialFilterProps } from './MaterialFilter'
+import type { useTableFilters } from '../../hooks/useTableFilters'
+import { DateRangeFilter } from './DateRangeFilter'
+import { MaterialFilter } from './MaterialFilter'
 
 export type FilterBarProps = {
-  /** Registros totales de la tabla antes de filtrar. */
-  total: number
-  /** Registros que se muestran después de filtrar. */
-  shown: number
-  isActive: boolean
-  materials: MaterialFilterProps
-  /** Omitir el filtro de tiempo en tablas sin columna de fecha. */
-  date?: DateRangeFilterProps
-  onReset: () => void
+  filters: ReturnType<typeof useTableFilters<unknown>>
+  /** Omitir en tablas sin columna de fecha. */
+  withDate?: boolean
 }
 
-export function FilterBar({ total, shown, isActive, materials, date, onReset }: FilterBarProps) {
+export function FilterBar({ filters, withDate = false }: FilterBarProps) {
   return (
     <div className="filter-bar">
-      {date && <DateRangeFilter {...date} />}
+      {withDate && (
+        <DateRangeFilter
+          preset={filters.preset}
+          customRange={filters.customRange}
+          range={filters.range}
+          onPresetChange={filters.setPreset}
+          onCustomRangeChange={filters.setCustomRange}
+        />
+      )}
 
-      <MaterialFilter {...materials} />
+      <MaterialFilter options={filters.options} value={filters.materials} onChange={filters.setMaterials} />
 
       <div className="filter-summary">
         <span className="filter-count">
-          {shown} DE {total} REGISTROS
+          {filters.filtered.length} DE {filters.total} REGISTROS
         </span>
         <button
           type="button"
           className="btn-red compact filter-reset"
-          onClick={onReset}
-          disabled={!isActive}
+          onClick={filters.reset}
+          disabled={!filters.isActive}
         >
           LIMPIAR
         </button>

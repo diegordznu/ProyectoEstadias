@@ -11,3 +11,8 @@ pnpm-debug.log*
 # Dependencias y builds
 node_modules/
 dist/
+
+# Skills de agentes
+skills-lock.json
+.agents/skills/
+.claude/skills/
