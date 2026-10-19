@@ -136,6 +136,116 @@ select:focus {
   padding-top: 5vh;
 }
 
+/* ===== Barra de contexto de usuario ===== */
+
+.context-bar {
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 30px;
+  padding: 14px 16px;
+  background: var(--bg-color);
+  /* Filete muy tenue: separa la barra del contenido que pasa por debajo. */
+  border-bottom: 1px solid #242424;
+  transition: transform 0.25s ease;
+}
+
+/* Se desliza fuera de vista al hacer scroll hacia abajo. */
+.context-bar.bar-hidden {
+  transform: translateY(-100%);
+}
+
+/* Sin sesión (login): solo la marca, centrada. */
+.context-bar.brand-only {
+  justify-content: center;
+}
+
+.context-brand {
+  width: auto;
+  padding: 0;
+  background: none;
+  font-size: clamp(1.2rem, 1.6vw, 1.8rem);
+  font-weight: bold;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.context-path {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.context-sep {
+  opacity: 0.6;
+}
+
+.context-path strong {
+  color: var(--btn-green);
+}
+
+.context-user {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.context-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.role-badge {
+  padding: 6px 10px;
+  border: 2px solid var(--text-color);
+  font-size: 0.85rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.role-badge.role-admin {
+  background: var(--btn-blue);
+  border-color: var(--btn-blue);
+}
+
+.role-badge.role-capturista {
+  background: var(--btn-green);
+  border-color: var(--btn-green);
+  color: var(--bg-color);
+}
+
+.role-badge.role-consulta {
+  background: var(--btn-gray);
+  border-color: var(--btn-gray);
+}
+
+.context-vigencia {
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.context-logout {
+  width: auto;
+  padding: 10px 16px;
+  font-size: 1rem;
+}
+
 .table-container {
   overflow-x: auto;
   width: 100%;
@@ -630,6 +740,25 @@ th {
   .plant-detail-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .context-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .context-path {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .context-user {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .context-vigencia {
+    white-space: normal;
   }
 
   .filter-bar {

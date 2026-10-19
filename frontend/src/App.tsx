@@ -4,6 +4,7 @@ import { fetchSession, login, logout } from './api/auth'
 import { setOnSessionExpired } from './api/client'
 import { EmptyRows } from './components/filters/EmptyRows'
 import { FilterBar } from './components/filters/FilterBar'
+import { UserContextBar } from './components/layout/UserContextBar'
 import { UsersScreen } from './components/users/UsersScreen'
 import { useTableFilters } from './hooks/useTableFilters'
 import { daysAgo, monthsAgo } from './lib/dates'
@@ -257,9 +258,13 @@ function App() {
         {message.text}
       </div>
 
-      <header>
-        <h1>GRUPO ARMAS</h1>
-      </header>
+      <UserContextBar
+        session={session}
+        activeScreen={activeScreen}
+        selectedPlant={selectedPlant}
+        onNavigate={showScreen}
+        onLogout={handleLogout}
+      />
 
       {activeScreen === 'screen-login' && !checkingSession && (
         <form id="screen-login" className="center-container" onSubmit={handleLogin}>
