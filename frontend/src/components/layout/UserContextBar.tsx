@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import logo from '../../assets/logo.svg'
 import { formatFecha, type Usuario } from '../../types/user'
 
 type UserContextBarProps = {
@@ -77,15 +78,22 @@ export function UserContextBar({
 
   const screenLabel = session ? SCREEN_LABELS[activeScreen] : undefined
   const brandOnly = !session
+  // El texto ya nombra la marca: el logo es decorativo.
+  const brand = (
+    <>
+      <img src={logo} alt="" className="context-logo" />
+      GRUPO ARMAS
+    </>
+  )
   const className = `context-bar${brandOnly ? ' brand-only' : ''}${hidden ? ' bar-hidden' : ''}`
 
   return (
     <header className={className}>
       {brandOnly ? (
-        <span className="context-brand">GRUPO ARMAS</span>
+        <span className="context-brand">{brand}</span>
       ) : (
         <button type="button" className="context-brand" onClick={() => onNavigate('screen-menu')}>
-          GRUPO ARMAS
+          {brand}
         </button>
       )}
 

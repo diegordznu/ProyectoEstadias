@@ -164,6 +164,9 @@ select:focus {
 }
 
 .context-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   width: auto;
   padding: 0;
   background: none;
@@ -171,6 +174,11 @@ select:focus {
   font-weight: bold;
   letter-spacing: 2px;
   white-space: nowrap;
+}
+
+.context-logo {
+  height: 1.6em;
+  width: auto;
 }
 
 .context-path {
