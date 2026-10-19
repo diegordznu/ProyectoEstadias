@@ -602,6 +602,28 @@ th {
   background: var(--btn-gray);
 }
 
+/* Ojo para mostrar/ocultar la contraseña, dentro del input del login. */
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 56px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 52px;
+  padding: 0;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .masked {
   letter-spacing: 3px;
   opacity: 0.85;

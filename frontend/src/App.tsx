@@ -131,6 +131,7 @@ function App() {
   const [activeScreen, setActiveScreen] = useState('screen-login')
   const [loginUser, setLoginUser] = useState('')
   const [loginPass, setLoginPass] = useState('')
+  const [showLoginPass, setShowLoginPass] = useState(false)
   const [session, setSession] = useState<Usuario | null>(null)
   // Mientras se consulta /auth/me no se muestra el login, para no parpadear al recargar.
   const [checkingSession, setCheckingSession] = useState(true)
@@ -218,6 +219,7 @@ function App() {
       setSession(usuario)
       setLoginUser('')
       setLoginPass('')
+      setShowLoginPass(false)
       setActiveScreen('screen-menu')
       showMessage('ACCESO CONCEDIDO')
     } catch (error) {
@@ -274,13 +276,28 @@ function App() {
           </div>
           <div className="form-group">
             <label>CONTRASEÑA:</label>
-            <input
-              type="password"
-              id="login-pass"
-              placeholder="INGRESE CONTRASEÑA"
-              value={loginPass}
-              onChange={(e) => setLoginPass(e.target.value)}
-            />
+            <div className="password-field">
+              <input
+                type={showLoginPass ? 'text' : 'password'}
+                id="login-pass"
+                placeholder="INGRESE CONTRASEÑA"
+                value={loginPass}
+                onChange={(e) => setLoginPass(e.target.value)}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                aria-label={showLoginPass ? 'OCULTAR CONTRASEÑA' : 'MOSTRAR CONTRASEÑA'}
+                aria-pressed={showLoginPass}
+                onClick={() => setShowLoginPass((prev) => !prev)}
+              >
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                  {showLoginPass && <path d="M3 3l18 18" />}
+                </svg>
+              </button>
+            </div>
           </div>
           <button type="submit" className="btn-green" id="btn-login" disabled={loggingIn}>
             {loggingIn ? 'VALIDANDO...' : 'INICIAR SESION'}
