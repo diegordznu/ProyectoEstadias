@@ -1,11 +1,76 @@
+/* ===== Tokens de diseño =====
+   :root = tema oscuro (el que se ve por defecto en la app).
+   El tema claro redefine los mismos valores más abajo con [data-theme='light']. */
 :root {
+  color-scheme: dark;
+
+  --font-sans: 'Fira Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
   --bg-color: #000000;
   --text-color: #ffffff;
-  --btn-blue: #0047ab;
-  --btn-green: #00c853;
-  --btn-red: #8b0000;
-  --btn-gray: #333333;
   --panel-bg: #090909;
+  --border-color: #242424;
+  --border-strong: #444444;
+  --cell-border: #ffffff;
+  --hover-bg: #151515;
+  --accent-text: #ff8a8a;
+
+  --btn-blue: #0047ab;
+  --btn-blue-fg: #ffffff;
+  --btn-green: #00c853;
+  --btn-green-fg: #ffffff;
+  --btn-red: #8b0000;
+  --btn-red-fg: #ffffff;
+  --btn-gray: #333333;
+  --btn-gray-fg: #ffffff;
+
+  /* Cabeceras de tabla, celda de total y toast: se pintan "al revés". */
+  --th-bg: #ffffff;
+  --th-fg: #000000;
+  --total-bg: #ffffff;
+  --total-fg: #000000;
+  --toast-bg: #ffffff;
+  --toast-fg: #000000;
+  --badge-capturista-fg: #000000;
+  --status-on-fg: #00c853;
+
+  --rdp-accent-bg: #123a6b;
+  --logo-plate: transparent;
+}
+
+/* ===== Tema claro ===== */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-color: #f4f6f8;
+  --text-color: #101418;
+  --panel-bg: #ffffff;
+  --border-color: #d5dae0;
+  --border-strong: #9aa3ad;
+  --cell-border: #9aa3ad;
+  --hover-bg: #e8edf3;
+  --accent-text: #b00020;
+
+  --btn-blue-fg: #ffffff;
+  --btn-green-fg: #101418;
+  --btn-red-fg: #ffffff;
+  --btn-gray-fg: #101418;
+  --btn-gray: #dfe4ea;
+
+  --th-bg: #e6eaef;
+  --th-fg: #101418;
+  --total-bg: #dbe6f7;
+  --total-fg: #101418;
+  --toast-bg: #ffffff;
+  --toast-fg: #101418;
+  --badge-capturista-fg: #101418;
+  /* El verde de los botones no alcanza contraste como texto sobre fondo claro. */
+  --status-on-fg: #0a7d38;
+
+  --rdp-accent-bg: #cfe0f7;
+
+  /* El logo tiene trazos blancos: sobre fondo claro se apoya en una placa oscura. */
+  --logo-plate: #0e0e0e;
 }
 
 * {
@@ -13,13 +78,13 @@
 }
 
 html {
-  background: #000;
+  background: var(--bg-color);
 }
 
 body {
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--font-sans);
   margin: 0;
   padding: 20px;
 }
@@ -55,7 +120,7 @@ button {
   border: none;
   border-radius: 0;
   color: var(--text-color);
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--font-sans);
   font-size: 1.5rem;
   font-weight: bold;
   padding: 30px 20px;
@@ -72,18 +137,22 @@ button:hover {
 
 .btn-blue {
   background-color: var(--btn-blue);
+  color: var(--btn-blue-fg);
 }
 
 .btn-green {
   background-color: var(--btn-green);
+  color: var(--btn-green-fg);
 }
 
 .btn-red {
   background-color: var(--btn-red);
+  color: var(--btn-red-fg);
 }
 
 .btn-gray {
   background-color: var(--btn-gray);
+  color: var(--btn-gray-fg);
 }
 
 .grid-menu {
@@ -99,6 +168,29 @@ button:hover {
    Sin admin rellena el hueco junto al último botón. */
 #btn-logout:nth-child(odd) {
   grid-column: 1 / -1;
+}
+
+/* ===== Transición de entrada al menú =====
+   React monta un #screen-menu nuevo cada vez que se entra al menú (login,
+   regreso desde otra pantalla o recarga con sesión vigente), así que basta
+   con esta regla: la animación corre sola sin disparadores en el TSX. */
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+/* `backwards` evita el destello de un fotograma a opacidad 1 antes de que
+   arranque, y al terminar libera el transform sin dejarlo persistente. */
+#screen-menu {
+  animation: menu-enter 350ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #screen-menu {
+    animation: none;
+  }
 }
 
 .form-group {
@@ -122,7 +214,7 @@ select {
   font-size: 1.2rem;
   width: 100%;
   box-sizing: border-box;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--font-sans);
 }
 
 input:focus,
@@ -150,7 +242,7 @@ select:focus {
   padding: 14px 16px;
   background: var(--bg-color);
   /* Filete muy tenue: separa la barra del contenido que pasa por debajo. */
-  border-bottom: 1px solid #242424;
+  border-bottom: 1px solid var(--border-color);
   transition: transform 0.25s ease;
 }
 
@@ -180,6 +272,27 @@ select:focus {
 .context-logo {
   height: 1.6em;
   width: auto;
+  /* En modo claro el logo se apoya en una placa oscura para no perder sus trazos blancos. */
+  background: var(--logo-plate);
+  padding: 3px;
+  border-radius: 2px;
+}
+
+.context-theme {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 1rem;
+  background: none;
+  border: 2px solid var(--text-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1;
+}
+
+.context-theme svg {
+  display: block;
 }
 
 .context-path {
@@ -229,12 +342,13 @@ select:focus {
 .role-badge.role-admin {
   background: var(--btn-blue);
   border-color: var(--btn-blue);
+  color: var(--btn-blue-fg);
 }
 
 .role-badge.role-capturista {
   background: var(--btn-green);
   border-color: var(--btn-green);
-  color: var(--bg-color);
+  color: var(--badge-capturista-fg);
 }
 
 .role-badge.role-consulta {
@@ -266,21 +380,23 @@ table {
   width: 100%;
   border-collapse: collapse;
   border: 2px solid var(--text-color);
-  background: #000;
+  background: var(--bg-color);
 }
 
 th,
 td {
-  border: 1px solid var(--text-color);
+  border: 1px solid var(--cell-border);
   padding: 15px;
   text-align: left;
   font-size: 1.1rem;
   white-space: nowrap;
+  /* Fira Sans es proporcional: mantiene alineadas las columnas de cifras. */
+  font-variant-numeric: tabular-nums;
 }
 
 th {
-  background-color: var(--text-color);
-  color: var(--bg-color);
+  background-color: var(--th-bg);
+  color: var(--th-fg);
   text-transform: uppercase;
 }
 
@@ -289,8 +405,8 @@ th {
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: var(--text-color);
-  color: var(--bg-color);
+  background-color: var(--toast-bg);
+  color: var(--toast-fg);
   padding: 20px 40px;
   font-weight: bold;
   font-size: 1.2rem;
@@ -308,8 +424,8 @@ th {
 }
 
 .total-cell {
-  background: var(--text-color);
-  color: var(--bg-color);
+  background: var(--total-bg);
+  color: var(--total-fg);
   font-weight: bold;
 }
 
@@ -333,7 +449,7 @@ th {
 }
 
 .plant-button {
-  background: #000;
+  background: var(--bg-color);
   border: 2px solid var(--text-color);
   color: var(--text-color);
   min-height: 120px;
@@ -413,7 +529,7 @@ th {
 
 .preset-btn,
 .material-toggle {
-  background: #000;
+  background: var(--bg-color);
   border: 2px solid var(--text-color);
 }
 
@@ -438,7 +554,7 @@ th {
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  background: #000;
+  background: var(--bg-color);
   border: 2px solid var(--text-color);
   max-width: calc(100vw - 60px);
 }
@@ -454,7 +570,7 @@ th {
   min-width: 320px;
   max-width: 440px;
   padding: 12px;
-  background: #000;
+  background: var(--bg-color);
   border: 2px solid var(--text-color);
 }
 
@@ -489,14 +605,14 @@ th {
   gap: 10px;
   margin: 0;
   padding: 6px 8px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-strong);
   font-size: 1rem;
   text-transform: none;
   cursor: pointer;
 }
 
 .material-option:hover {
-  background: #151515;
+  background: var(--hover-bg);
 }
 
 .material-option input[type='checkbox'] {
@@ -589,7 +705,7 @@ th {
   display: block;
   margin-top: 6px;
   white-space: normal;
-  color: #ff8a8a;
+  color: var(--accent-text);
   font-size: 0.8rem;
   letter-spacing: 1px;
 }
@@ -639,12 +755,12 @@ th {
 }
 
 .status-on {
-  color: var(--btn-green);
+  color: var(--status-on-fg);
   font-weight: bold;
 }
 
 .status-off {
-  color: #ff8a8a;
+  color: var(--accent-text);
   font-weight: bold;
 }
 
@@ -684,7 +800,7 @@ th {
 }
 
 .users-state-error {
-  color: #ff8a8a;
+  color: var(--accent-text);
 }
 
 .users-state .inline-action {
@@ -696,7 +812,7 @@ th {
 
 .rdp-root {
   --rdp-accent-color: var(--btn-blue);
-  --rdp-accent-background-color: #123a6b;
+  --rdp-accent-background-color: var(--rdp-accent-bg);
   --rdp-today-color: var(--btn-green);
   --rdp-day_button-border-radius: 0;
   --rdp-selected-border: 2px solid var(--text-color);

@@ -7,6 +7,7 @@ import { FilterBar } from './components/filters/FilterBar'
 import { UserContextBar } from './components/layout/UserContextBar'
 import { UsersScreen } from './components/users/UsersScreen'
 import { useTableFilters } from './hooks/useTableFilters'
+import { useTheme } from './hooks/useTheme'
 import { daysAgo, monthsAgo } from './lib/dates'
 import type { Usuario } from './types/user'
 
@@ -140,6 +141,8 @@ function App() {
   const [selectedPlant, setSelectedPlant] = useState<string | null>(null)
   const [message, setMessage] = useState({ text: '', isError: false, visible: false })
 
+  const { theme, toggleTheme } = useTheme()
+
   const inventoryFilters = useTableFilters<InventoryItem>({
     rows: inventoryData,
     materialKey: inventoryMaterialKey,
@@ -258,6 +261,8 @@ function App() {
         session={session}
         activeScreen={activeScreen}
         selectedPlant={selectedPlant}
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onNavigate={showScreen}
         onLogout={handleLogout}
       />
