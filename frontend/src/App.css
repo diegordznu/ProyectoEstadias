@@ -35,7 +35,6 @@
   --status-on-fg: #00c853;
 
   --rdp-accent-bg: #123a6b;
-  --logo-plate: transparent;
 }
 
 /* ===== Tema claro ===== */
@@ -68,9 +67,6 @@
   --status-on-fg: #0a7d38;
 
   --rdp-accent-bg: #cfe0f7;
-
-  /* El logo tiene trazos blancos: sobre fondo claro se apoya en una placa oscura. */
-  --logo-plate: #0e0e0e;
 }
 
 * {
@@ -272,10 +268,6 @@ select:focus {
 .context-logo {
   height: 1.6em;
   width: auto;
-  /* En modo claro el logo se apoya en una placa oscura para no perder sus trazos blancos. */
-  background: var(--logo-plate);
-  padding: 3px;
-  border-radius: 2px;
 }
 
 .context-theme {
