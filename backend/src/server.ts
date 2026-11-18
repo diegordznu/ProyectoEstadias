@@ -1,62 +1,9 @@
+// Servidor para desarrollo local y red interna. En Vercel no se usa: allá la app
+// se exporta como función serverless desde api/index.ts (raíz del repo).
+// dotenv debe ir primero: app.ts valida las variables de entorno al importarse.
 import 'dotenv/config';
-import cookieParser from 'cookie-parser';
-import express, { type Application, type Request, type Response } from 'express';
 import os from 'node:os';
-import { requireAdmin, requireAuth } from './auth/middleware';
-import { requiredEnv } from './config/env';
-import { createUsersRepository } from './db';
-import { InventarioRepository } from './db/inventarioRepository';
-import { getPool, isDatabaseConfigured } from './db/pool';
-import { createInventarioNoDisponibleRouter, createInventarioRouter } from './routes/inventario';
-import { createAuthRouter } from './routes/auth';
-import { createUsersRouter } from './routes/users';
-import { pingErp } from './services/erpApi';
-
-const app: Application = express();
-const port = Number(process.env.PORT ?? 3000);
-
-// Sin el secreto no se pueden firmar sesiones: mejor fallar al arrancar que en el primer login.
-requiredEnv('JWT_SECRET');
-
-// El frontend se sirve por el proxy de Vite, que corre en esta misma máquina.
-// Confiamos en X-Forwarded-For solo vía loopback: así req.ip (el bloqueo de
-// intentos de login) refleja la IP real de la máquina externa, y quien se
-// conecte directo al puerto 3000 no puede falsificar ese encabezado.
-app.set('trust proxy', 'loopback');
-
-app.use(express.json());
-app.use(cookieParser());
-app.get('/', (_req: Request, res: Response) => {
-    res.send('Hello, Typescript with Express!');
-});
-
-// Ruta de prueba: confirma que la API del ERP responde.
-app.get('/erp/ping', async (_req: Request, res: Response) => {
-    try {
-        const erp = await pingErp();
-        res.status(erp.ok ? 200 : 502).json({ erpStatus: erp.status, body: erp.body });
-    } catch (error: unknown) {
-        console.error('Error al consultar la API del ERP:', error);
-        res.status(502).json({ error: 'No se pudo conectar con la API del ERP' });
-    }
-});
-
-const usersRepository = createUsersRepository();
-
-app.use('/api/auth', createAuthRouter(usersRepository));
-
-// CRUD de usuarios del sistema: solo para administradores con sesión iniciada.
-app.use('/api/users', requireAuth(usersRepository), requireAdmin, createUsersRouter(usersRepository));
-
-// Inventario y movimientos: cualquier usuario con sesión consulta; registrar exige ADMINISTRADOR o CAPTURISTA.
-// Solo existe sobre PostgreSQL (el inventario se calcula en la BD a partir de los movimientos).
-app.use(
-    '/api/inventario',
-    requireAuth(usersRepository),
-    isDatabaseConfigured()
-        ? createInventarioRouter(new InventarioRepository(getPool()))
-        : createInventarioNoDisponibleRouter(),
-);
+import app from './app';
 
 /** IPs no internas de esta máquina, para mostrar la URL que deben usar las demás computadoras. */
 function direccionesDeRed(): string[] {
@@ -71,6 +18,8 @@ function direccionesDeRed(): string[] {
 
     return direcciones;
 }
+
+const port = Number(process.env.PORT ?? 3000);
 
 // '0.0.0.0' explícito: sin hostname, Node escucha en todas las interfaces por
 // accidente; con esto es una decisión y el comportamiento queda documentado.

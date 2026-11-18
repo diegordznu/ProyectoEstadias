@@ -16,3 +16,11 @@ dist/
 skills-lock.json
 .agents/skills/
 .claude/skills/
+
+# Variables de entorno (secretos)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel

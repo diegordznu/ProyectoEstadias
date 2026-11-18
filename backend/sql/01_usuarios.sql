@@ -13,3 +13,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 -- Índice opcional para búsquedas por nombre de usuario.
 CREATE INDEX IF NOT EXISTS idx_usuarios_usuario ON usuarios (usuario);
+
+-- Sin políticas: la API pública de Supabase (anon / authenticated) no ve nada;
+-- el backend se conecta como "postgres" (BYPASSRLS).
+ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;

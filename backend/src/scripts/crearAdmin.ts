@@ -15,7 +15,7 @@ async function main(): Promise<void> {
         throw new Error('Uso: npm run crear-admin -- USUARIO CONTRASEÑA');
     }
     if (!isDatabaseConfigured()) {
-        throw new Error('Configure DATABASE_URL en el .env: el admin debe guardarse en la BD, no en memoria.');
+        throw new Error('Configure DATABASE_URL en el .env para crear el administrador.');
     }
 
     const resultado = validarUsuario(

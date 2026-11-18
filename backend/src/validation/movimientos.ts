@@ -1,4 +1,5 @@
 import type { MovimientoInput } from '../db/inventarioRepository';
+import { ahoraLocal } from '../config/tiempo';
 import { soloTexto } from './users';
 
 export interface MovimientoPayload {
@@ -17,27 +18,18 @@ const CANTIDAD_MAXIMA = 1_000_000;
 /** Acepta 'YYYY-MM-DD HH:mm' o el formato de <input type="datetime-local"> 'YYYY-MM-DDTHH:mm'. */
 const FECHA_HORA = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})$/;
 
-const pad = (n: number) => String(n).padStart(2, '0');
-
-/** Fecha y hora local del servidor en 'YYYY-MM-DD HH:mm' (misma forma que se guarda). */
-export function ahoraLocal(fecha: Date = new Date()): string {
-    return (
-        `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())} ` +
-        `${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`
-    );
-}
-
 function normalizarFecha(valor: string): string | null {
     const partes = FECHA_HORA.exec(valor);
     if (!partes) return null;
     const [anio, mes, dia, hora, minuto] = partes.slice(1).map(Number);
-    const fecha = new Date(anio, mes - 1, dia, hora, minuto);
+    // En UTC solo se valida que la fecha exista (sin depender de la zona del servidor).
+    const fecha = new Date(Date.UTC(anio, mes - 1, dia, hora, minuto));
     const valida =
-        fecha.getFullYear() === anio &&
-        fecha.getMonth() === mes - 1 &&
-        fecha.getDate() === dia &&
-        fecha.getHours() === hora &&
-        fecha.getMinutes() === minuto;
+        fecha.getUTCFullYear() === anio &&
+        fecha.getUTCMonth() === mes - 1 &&
+        fecha.getUTCDate() === dia &&
+        fecha.getUTCHours() === hora &&
+        fecha.getUTCMinutes() === minuto;
     return valida ? `${partes[1]}-${partes[2]}-${partes[3]} ${partes[4]}:${partes[5]}` : null;
 }
 

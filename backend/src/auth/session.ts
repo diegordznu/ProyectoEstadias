@@ -1,6 +1,7 @@
 import type { CookieOptions } from 'express';
 import jwt from 'jsonwebtoken';
 import { requiredEnv } from '../config/env';
+import { hoyLocal } from '../config/tiempo';
 import type { Usuario } from '../db/usersRepository';
 
 export const SESSION_COOKIE = 'sesion';
@@ -11,7 +12,8 @@ const DURACION_MS = 8 * 60 * 60 * 1000;
 export const sessionCookieOptions: CookieOptions = {
     httpOnly: true,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    // En Vercel siempre hay HTTPS; en la red local (http://IP:5173) la cookie no puede ser secure.
+    secure: Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production',
     path: '/',
 };
 
@@ -37,15 +39,13 @@ export function leerToken(token: string): number | null {
     }
 }
 
-/** Fecha local del servidor en formato 'YYYY-MM-DD', comparable con las vigencias. */
-const hoy = (): string => new Date().toLocaleDateString('en-CA');
 
 /** Motivo por el que el usuario no puede entrar al sistema, o null si tiene acceso. */
 export function motivoSinAcceso(usuario: Usuario): string | null {
     if (usuario.estatus !== 'ACTIVO') return 'USUARIO INACTIVO';
 
     // Una vigencia vacía se toma como sin límite.
-    const fecha = hoy();
+    const fecha = hoyLocal();
     if (usuario.vigenciaFini && fecha < usuario.vigenciaFini) return 'USUARIO FUERA DE VIGENCIA';
     if (usuario.vigenciaFechafin && fecha > usuario.vigenciaFechafin) return 'USUARIO FUERA DE VIGENCIA';
 

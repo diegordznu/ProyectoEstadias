@@ -1,0 +1,16 @@
+{
+  // Solo para la función serverless de Vercel (api/). Backend y frontend tienen su propio tsconfig.
+  "compilerOptions": {
+    "module": "node16",
+    "moduleResolution": "node16",
+    "target": "es2022",
+    "types": ["node"],
+    "typeRoots": ["./backend/node_modules/@types"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true
+  },
+  "include": ["api"]
+}

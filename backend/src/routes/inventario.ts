@@ -78,14 +78,3 @@ export function createInventarioRouter(repository: InventarioRepository): Router
 
     return router;
 }
-
-/** Sustituto cuando no hay BD configurada: el inventario no tiene versión en memoria. */
-export function createInventarioNoDisponibleRouter(): Router {
-    const router = Router();
-    router.use((_req: Request, res: Response) => {
-        res.status(503).json({
-            errores: ['EL INVENTARIO REQUIERE CONFIGURAR LA BASE DE DATOS (DATABASE_URL EN EL .ENV)'],
-        });
-    });
-    return router;
-}

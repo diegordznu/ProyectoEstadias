@@ -40,9 +40,7 @@ export interface UsuarioConPassword extends Usuario {
 }
 
 /**
- * Capa de acceso a los usuarios del sistema.
- * Hoy existen dos implementaciones (memoria y PostgreSQL) para poder
- * trabajar mientras se define la conexión definitiva a la base de datos.
+ * Capa de acceso a los usuarios del sistema (implementación: PostgresUsersRepository).
  */
 export interface UsersRepository {
     listar(): Promise<Usuario[]>;
