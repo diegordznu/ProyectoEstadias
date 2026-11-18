@@ -7,18 +7,38 @@ export type UseTableFiltersOptions<T> = {
   materialKey: (row: T) => string
   /** Columna de fecha ISO 'YYYY-MM-DD' (puede incluir ' HH:mm'). Si no existe, no hay filtro de tiempo. */
   dateKey?: (row: T) => string
+  /** Columna de origen: al definirla (junto a origenFijo) se habilita el interruptor SOLO ORIGEN. */
+  origenKey?: (row: T) => string
+  /** Valor que debe tener la columna de origen cuando el interruptor está activo (la planta de la pestaña). */
+  origenFijo?: string
+  /** Columna de destino: al definirla (junto a destinoFijo) se habilita el interruptor SOLO DESTINO. */
+  destinoKey?: (row: T) => string
+  /** Valor que debe tener la columna de destino cuando el interruptor está activo (la planta de la pestaña). */
+  destinoFijo?: string
 }
 
 /**
  * Estado compartido de los filtros de una tabla:
  * - tiempo: presets preestablecidos o rango personalizado con calendario
  * - materiales: multi-selección (null = todos)
+ * - soloOrigen: muestra únicamente los registros cuyo origen sea la planta de la pestaña
+ * - soloDestino: muestra únicamente los registros cuyo destino sea la planta de la pestaña
  */
-export function useTableFilters<T>({ rows, materialKey, dateKey }: UseTableFiltersOptions<T>) {
+export function useTableFilters<T>({
+  rows,
+  materialKey,
+  dateKey,
+  origenKey,
+  origenFijo,
+  destinoKey,
+  destinoFijo,
+}: UseTableFiltersOptions<T>) {
   const [preset, setPreset] = useState<DatePreset>('all')
   const [customRange, setCustomRange] = useState<DateRangeValue>({})
-  // null = sin filtro (todos los materiales)
+  // null = sin filtro (todos)
   const [materials, setMaterials] = useState<string[] | null>(null)
+  const [soloOrigen, setSoloOrigen] = useState(false)
+  const [soloDestino, setSoloDestino] = useState(false)
 
   const options = useMemo(() => {
     const unique = new Set<string>()
@@ -42,16 +62,23 @@ export function useTableFilters<T>({ rows, materialKey, dateKey }: UseTableFilte
 
       if (materialFilter && !materialFilter.has(materialKey(row))) return false
 
+      // Interruptores activos: solo los movimientos cuyo origen/destino sea la planta de la pestaña.
+      if (soloOrigen && origenKey && origenFijo && origenKey(row) !== origenFijo) return false
+      if (soloDestino && destinoKey && destinoFijo && destinoKey(row) !== destinoFijo) return false
+
       return true
     })
-  }, [rows, dateKey, materialKey, from, to, materials])
+  }, [rows, dateKey, materialKey, origenKey, origenFijo, destinoKey, destinoFijo, from, to, materials, soloOrigen, soloDestino])
 
-  const isActive = Boolean(from || to) || materials !== null
+  const isActive =
+    Boolean(from || to) || materials !== null || soloOrigen || soloDestino
 
   const reset = useCallback(() => {
     setPreset('all')
     setCustomRange({})
     setMaterials(null)
+    setSoloOrigen(false)
+    setSoloDestino(false)
   }, [])
 
   return {
@@ -62,6 +89,10 @@ export function useTableFilters<T>({ rows, materialKey, dateKey }: UseTableFilte
     range,
     materials,
     setMaterials,
+    soloOrigen,
+    setSoloOrigen,
+    soloDestino,
+    setSoloDestino,
     options,
     total: rows.length,
     filtered,

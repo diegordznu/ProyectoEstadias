@@ -30,6 +30,8 @@ const NO_ROWS: never[] = []
 const inventoryMaterialKey = (item: InventarioMaterial) => item.sku
 const transferMaterialKey = (transfer: Movimiento) => transfer.material
 const transferDateKey = (transfer: Movimiento) => transfer.fecha
+const transferOrigenKey = (transfer: Movimiento) => transfer.origen
+const transferDestinoKey = (transfer: Movimiento) => transfer.destino
 
 const loadPlantNames = () =>
   fetchUbicaciones().then((ubicaciones) =>
@@ -89,6 +91,11 @@ function App() {
     rows: plantMovements.data ?? NO_ROWS,
     materialKey: transferMaterialKey,
     dateKey: transferDateKey,
+    // Los interruptores siempre apuntan a la planta de la pestaña abierta.
+    origenKey: transferOrigenKey,
+    origenFijo: selectedPlant ?? undefined,
+    destinoKey: transferDestinoKey,
+    destinoFijo: selectedPlant ?? undefined,
   })
 
   const historyFilters = useTableFilters<Movimiento>({
@@ -351,7 +358,7 @@ function App() {
                 </button>
               </div>
 
-              <FilterBar filters={plantFilters} withDate />
+              <FilterBar filters={plantFilters} withDate withRoute />
 
               <div className="table-container plant-table-container">
                 <table>
