@@ -8,27 +8,14 @@ import { UserContextBar } from './components/layout/UserContextBar'
 import { UsersScreen } from './components/users/UsersScreen'
 import { useTableFilters } from './hooks/useTableFilters'
 import { useTheme } from './hooks/useTheme'
-import { daysAgo, monthsAgo } from './lib/dates'
+import { daysAgo } from './lib/dates'
+import { PLANTS, computeInventory, type InventoryItem, type InventoryMovement, type Material, type Plant } from './lib/inventory'
 import type { Usuario } from './types/user'
 
-type InventoryItem = {
-  sku: string
-  name: string
-  p1: number
-  p2: number
-  p3: number
-  p6: number
-}
-
-type TransferRecord = {
+type TransferRecord = InventoryMovement & {
   /** Fecha y hora del movimiento: 'YYYY-MM-DD HH:mm'. */
   date: string
-  piece: string
   lote: string
-  /** Proveedor u origen del material. */
-  origin: string
-  dest: string
-  qty: number
 }
 
 type ColumnDef = { key: keyof TransferRecord; label: string }
@@ -43,55 +30,71 @@ const TRANSFER_COLUMNS: ColumnDef[] = [
   { key: 'qty', label: 'CANTIDAD' },
 ]
 
-const PLANT_TRANSFERS: Record<string, TransferRecord[]> = {
-  'Planta 1': [
-    { date: daysAgo(1, '08:15'), piece: 'MOD-AC-01', lote: 'L-1001', origin: 'Planta 2', dest: 'Planta 1', qty: 20 },
-    { date: daysAgo(4, '10:42'), piece: 'RAD-AL-99', lote: 'L-1002', origin: 'Planta 1', dest: 'Planta 3', qty: 15 },
-    { date: daysAgo(9, '13:05'), piece: 'SOP-MT-55', lote: 'L-1003', origin: 'Planta 6', dest: 'Planta 1', qty: 40 },
-    { date: daysAgo(22, '16:30'), piece: 'SEN-TM-44', lote: 'L-1004', origin: 'Planta 1', dest: 'Planta 2', qty: 35 },
-    { date: daysAgo(74, '09:20'), piece: 'COR-VT-88', lote: 'L-1005', origin: 'Planta 3', dest: 'Planta 1', qty: 50 },
-    { date: monthsAgo(5, '11:55'), piece: 'BOM-AG-77', lote: 'L-1006', origin: 'Planta 1', dest: 'Planta 6', qty: 12 },
-  ],
-  'Planta 2': [
-    { date: daysAgo(2, '07:48'), piece: 'MOD-AC-01', lote: 'L-1001', origin: 'Planta 2', dest: 'Planta 1', qty: 20 },
-    { date: daysAgo(11, '14:10'), piece: 'FIL-CB-22', lote: 'L-2001', origin: 'Planta 2', dest: 'Planta 6', qty: 100 },
-    { date: daysAgo(38, '17:25'), piece: 'INT-FR-66', lote: 'L-2002', origin: 'Planta 2', dest: 'Planta 3', qty: 8 },
-  ],
-  'Planta 3': [
-    { date: daysAgo(3, '09:33'), piece: 'RAD-AL-99', lote: 'L-1002', origin: 'Planta 1', dest: 'Planta 3', qty: 15 },
-    { date: daysAgo(17, '12:40'), piece: 'VAL-EX-33', lote: 'L-3001', origin: 'Planta 3', dest: 'Planta 6', qty: 25 },
-    { date: daysAgo(65, '15:18'), piece: 'SOP-MT-55', lote: 'L-3002', origin: 'Planta 3', dest: 'Planta 2', qty: 18 },
-  ],
-  'Planta 6': [
-    { date: daysAgo(5, '08:02'), piece: 'SOP-MT-55', lote: 'L-1003', origin: 'Planta 6', dest: 'Planta 1', qty: 40 },
-    { date: daysAgo(8, '10:27'), piece: 'FIL-CB-22', lote: 'L-2001', origin: 'Planta 2', dest: 'Planta 6', qty: 100 },
-    { date: daysAgo(13, '13:50'), piece: 'VAL-EX-33', lote: 'L-3001', origin: 'Planta 3', dest: 'Planta 6', qty: 25 },
-    { date: daysAgo(29, '16:12'), piece: 'TUB-RD-11', lote: 'L-6001', origin: 'Planta 6', dest: 'Planta 2', qty: 60 },
-    { date: daysAgo(47, '11:08'), piece: 'MOD-AC-01', lote: 'L-6002', origin: 'Planta 6', dest: 'Planta 3', qty: 22 },
-    { date: monthsAgo(4, '09:45'), piece: 'COR-VT-88', lote: 'L-6003', origin: 'Planta 6', dest: 'Planta 1', qty: 75 },
-  ],
-}
+const MATERIALS: Material[] = [
+  { sku: 'MOD-AC-01', name: 'MÓDULO AIRE ACONDICIONADO V8' },
+  { sku: 'RAD-AL-99', name: 'RADIADOR ALUMINIO REFORZADO' },
+  { sku: 'SOP-MT-55', name: 'SOPORTE MOTOR HIDRÁULICO' },
+  { sku: 'FIL-CB-22', name: 'FILTRO DE CABINA CARBÓN' },
+  { sku: 'BOM-AG-77', name: 'BOMBA DE AGUA ALTA PRESIÓN' },
+  { sku: 'COR-VT-88', name: 'CORREA VENTILADOR TENSIÓN' },
+  { sku: 'VAL-EX-33', name: 'VÁLVULA EXHAUSTO V6' },
+  { sku: 'SEN-TM-44', name: 'SENSOR TEMPERATURA MOTOR' },
+  { sku: 'INT-FR-66', name: 'INTERCOOLER FRONTAL REFORZADO' },
+  { sku: 'TUB-RD-11', name: 'TUBERÍA RADIADOR DOBLE PARED' },
+]
 
-const PLANT_OPTIONS = Object.keys(PLANT_TRANSFERS)
+/**
+ * Registro único de movimientos (más reciente primero). Cada movimiento se captura una sola vez:
+ * aparece en la tabla de su planta de origen y en la de su planta destino, y alimenta el inventario.
+ * Las entradas desde un proveedor externo solo suman en la planta destino.
+ */
+const MOVEMENTS: TransferRecord[] = [
+  { date: daysAgo(1, '13:05'), piece: 'MOD-AC-01', lote: 'L-2405-01', origin: 'Planta 1', dest: 'Planta 2', qty: 30 },
+  { date: daysAgo(2, '10:40'), piece: 'FIL-CB-22', lote: 'L-2406-01', origin: 'Planta 2', dest: 'Planta 3', qty: 120 },
+  { date: daysAgo(4, '08:25'), piece: 'VAL-EX-33', lote: 'L-2406-04', origin: 'Planta 3', dest: 'Planta 1', qty: 30 },
+  { date: daysAgo(6, '15:15'), piece: 'TUB-RD-11', lote: 'L-2407-03', origin: 'Planta 2', dest: 'Planta 3', qty: 80 },
+  { date: daysAgo(9, '12:50'), piece: 'SEN-TM-44', lote: 'L-2407-01', origin: 'Planta 2', dest: 'Planta 3', qty: 60 },
+  { date: daysAgo(12, '09:20'), piece: 'COR-VT-88', lote: 'L-2406-03', origin: 'Planta 3', dest: 'Planta 2', qty: 100 },
+  { date: daysAgo(15, '14:45'), piece: 'RAD-AL-99', lote: 'L-2405-02', origin: 'Planta 2', dest: 'Planta 1', qty: 50 },
+  { date: daysAgo(19, '11:30'), piece: 'MOD-AC-01', lote: 'L-2408-01', origin: 'Planta 3', dest: 'Planta 6', qty: 45 },
+  { date: daysAgo(24, '07:55'), piece: 'INT-FR-66', lote: 'L-2407-02', origin: 'Planta 1', dest: 'Planta 2', qty: 15 },
+  { date: daysAgo(28, '16:10'), piece: 'SOP-MT-55', lote: 'L-2405-03', origin: 'Planta 3', dest: 'Planta 6', qty: 180 },
+  { date: daysAgo(35, '10:05'), piece: 'FIL-CB-22', lote: 'L-2408-02', origin: 'Filtros Monterrey', dest: 'Planta 1', qty: 400 },
+  { date: daysAgo(42, '13:35'), piece: 'BOM-AG-77', lote: 'L-2406-02', origin: 'Planta 1', dest: 'Planta 6', qty: 25 },
+  { date: daysAgo(49, '09:40'), piece: 'VAL-EX-33', lote: 'L-2406-04', origin: 'Planta 6', dest: 'Planta 3', qty: 80 },
+  { date: daysAgo(56, '15:50'), piece: 'TUB-RD-11', lote: 'L-2407-03', origin: 'Planta 6', dest: 'Planta 2', qty: 200 },
+  { date: daysAgo(63, '12:15'), piece: 'SEN-TM-44', lote: 'L-2407-01', origin: 'Planta 2', dest: 'Planta 1', qty: 90 },
+  { date: daysAgo(70, '08:30'), piece: 'MOD-AC-01', lote: 'L-2408-01', origin: 'Termotec Industrial', dest: 'Planta 3', qty: 150 },
+  { date: daysAgo(77, '14:20'), piece: 'COR-VT-88', lote: 'L-2406-03', origin: 'Planta 3', dest: 'Planta 6', qty: 120 },
+  { date: daysAgo(85, '11:45'), piece: 'RAD-AL-99', lote: 'L-2405-02', origin: 'Planta 2', dest: 'Planta 3', qty: 70 },
+  { date: daysAgo(91, '10:55'), piece: 'FIL-CB-22', lote: 'L-2406-01', origin: 'Planta 6', dest: 'Planta 2', qty: 250 },
+  { date: daysAgo(98, '16:30'), piece: 'SOP-MT-55', lote: 'L-2405-03', origin: 'Planta 3', dest: 'Planta 1', qty: 150 },
+  { date: daysAgo(104, '09:05'), piece: 'MOD-AC-01', lote: 'L-2405-01', origin: 'Planta 1', dest: 'Planta 2', qty: 60 },
+  { date: daysAgo(112, '13:10'), piece: 'TUB-RD-11', lote: 'L-2407-03', origin: 'Aceros del Norte', dest: 'Planta 6', qty: 650 },
+  { date: daysAgo(119, '08:45'), piece: 'INT-FR-66', lote: 'L-2407-02', origin: 'Termotec Industrial', dest: 'Planta 1', qty: 40 },
+  { date: daysAgo(126, '15:25'), piece: 'SEN-TM-44', lote: 'L-2407-01', origin: 'Electro Sensores MX', dest: 'Planta 2', qty: 300 },
+  { date: daysAgo(131, '12:40'), piece: 'VAL-EX-33', lote: 'L-2406-04', origin: 'Termotec Industrial', dest: 'Planta 6', qty: 220 },
+  { date: daysAgo(138, '10:15'), piece: 'COR-VT-88', lote: 'L-2406-03', origin: 'Aceros del Norte', dest: 'Planta 3', qty: 500 },
+  { date: daysAgo(143, '07:50'), piece: 'BOM-AG-77', lote: 'L-2406-02', origin: 'Hidráulica del Bajío', dest: 'Planta 1', qty: 90 },
+  { date: daysAgo(151, '14:05'), piece: 'FIL-CB-22', lote: 'L-2406-01', origin: 'Filtros Monterrey', dest: 'Planta 6', qty: 900 },
+  { date: daysAgo(160, '11:20'), piece: 'SOP-MT-55', lote: 'L-2405-03', origin: 'Hidráulica del Bajío', dest: 'Planta 3', qty: 600 },
+  { date: daysAgo(165, '09:35'), piece: 'RAD-AL-99', lote: 'L-2405-02', origin: 'Aceros del Norte', dest: 'Planta 2', qty: 180 },
+  { date: daysAgo(172, '08:10'), piece: 'MOD-AC-01', lote: 'L-2405-01', origin: 'Termotec Industrial', dest: 'Planta 1', qty: 200 },
+]
 
-const allTransfers = Object.values(PLANT_TRANSFERS).flat()
+const PLANT_TRANSFERS: Record<Plant, TransferRecord[]> = Object.fromEntries(
+  PLANTS.map((plant) => [plant, MOVEMENTS.filter((m) => m.origin === plant || m.dest === plant)]),
+) as Record<Plant, TransferRecord[]>
+
+const PLANT_OPTIONS = PLANTS
+
+const allTransfers = MOVEMENTS
+
+const inventoryData = computeInventory(MATERIALS, MOVEMENTS)
 
 const inventoryMaterialKey = (item: InventoryItem) => item.sku
 const transferMaterialKey = (transfer: TransferRecord) => transfer.piece
 const transferDateKey = (transfer: TransferRecord) => transfer.date
-
-const initialInventory: InventoryItem[] = [
-  { sku: 'MOD-AC-01', name: 'MÓDULO AIRE ACONDICIONADO V8', p1: 150, p2: 45, p3: 300, p6: 200 },
-  { sku: 'RAD-AL-99', name: 'RADIADOR ALUMINIO REFORZADO', p1: 80, p2: 120, p3: 50, p6: 150 },
-  { sku: 'SOP-MT-55', name: 'SOPORTE MOTOR HIDRÁULICO', p1: 200, p2: 200, p3: 1000, p6: 800 },
-  { sku: 'FIL-CB-22', name: 'FILTRO DE CABINA CARBÓN', p1: 500, p2: 800, p3: 1200, p6: 600 },
-  { sku: 'BOM-AG-77', name: 'BOMBA DE AGUA ALTA PRESIÓN', p1: 60, p2: 40, p3: 30, p6: 20 },
-  { sku: 'COR-VT-88', name: 'CORREA VENTILADOR TENSIÓN', p1: 300, p2: 250, p3: 400, p6: 350 },
-  { sku: 'VAL-EX-33', name: 'VÁLVULA EXHAUSTO V6', p1: 90, p2: 70, p3: 110, p6: 95 },
-  { sku: 'SEN-TM-44', name: 'SENSOR TEMPERATURA MOTOR', p1: 150, p2: 130, p3: 160, p6: 140 },
-  { sku: 'INT-FR-66', name: 'INTERCOOLER FRONTAL REFORZADO', p1: 25, p2: 15, p3: 10, p6: 5 },
-  { sku: 'TUB-RD-11', name: 'TUBERÍA RADIADOR DOBLE PARED', p1: 400, p2: 350, p3: 300, p6: 250 },
-]
 
 function App() {
   const [activeScreen, setActiveScreen] = useState('screen-login')
@@ -102,8 +105,7 @@ function App() {
   // Mientras se consulta /auth/me no se muestra el login, para no parpadear al recargar.
   const [checkingSession, setCheckingSession] = useState(true)
   const [loggingIn, setLoggingIn] = useState(false)
-  const [inventoryData] = useState<InventoryItem[]>(initialInventory)
-  const [selectedPlant, setSelectedPlant] = useState<string | null>(null)
+  const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null)
   const [message, setMessage] = useState({ text: '', isError: false, visible: false })
 
   const { theme, toggleTheme } = useTheme()
@@ -310,10 +312,9 @@ function App() {
               <thead>
                 <tr>
                   <th>PIEZA / SKU</th>
-                  <th>PLANTA 1</th>
-                  <th>PLANTA 2</th>
-                  <th>PLANTA 3</th>
-                  <th>PLANTA 6</th>
+                  {PLANTS.map((plant) => (
+                    <th key={plant}>{plant.toUpperCase()}</th>
+                  ))}
                   <th>TOTAL GLOBAL</th>
                 </tr>
               </thead>
@@ -326,24 +327,19 @@ function App() {
                     onReset={inventoryFilters.reset}
                   />
                 ) : (
-                  inventoryFilters.filtered.map((item) => {
-                    const total = item.p1 + item.p2 + item.p3 + item.p6
-
-                    return (
-                      <tr key={item.sku}>
-                        <td>
-                          <strong>{item.sku}</strong>
-                          <br />
-                          <small>{item.name}</small>
-                        </td>
-                        <td>{item.p1}</td>
-                        <td>{item.p2}</td>
-                        <td>{item.p3}</td>
-                        <td>{item.p6}</td>
-                        <td className="total-cell">{total}</td>
-                      </tr>
-                    )
-                  })
+                  inventoryFilters.filtered.map((item) => (
+                    <tr key={item.sku}>
+                      <td>
+                        <strong>{item.sku}</strong>
+                        <br />
+                        <small>{item.name}</small>
+                      </td>
+                      {PLANTS.map((plant) => (
+                        <td key={plant}>{item.stock[plant]}</td>
+                      ))}
+                      <td className="total-cell">{item.total}</td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
