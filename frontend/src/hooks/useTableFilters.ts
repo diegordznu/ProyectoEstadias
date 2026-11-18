@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { resolvePreset, type DatePreset, type DateRangeValue } from '../lib/dates'
+import { datePart, resolvePreset, type DatePreset, type DateRangeValue } from '../lib/dates'
 
 export type UseTableFiltersOptions<T> = {
   rows: T[]
   /** Columna que identifica el material de cada fila (SKU, pieza, etc.). */
   materialKey: (row: T) => string
-  /** Columna de fecha en formato ISO 'YYYY-MM-DD'. Si no existe, no hay filtro de tiempo. */
+  /** Columna de fecha ISO 'YYYY-MM-DD' (puede incluir ' HH:mm'). Si no existe, no hay filtro de tiempo. */
   dateKey?: (row: T) => string
 }
 
@@ -34,7 +34,8 @@ export function useTableFilters<T>({ rows, materialKey, dateKey }: UseTableFilte
 
     return rows.filter((row) => {
       if (dateKey && (from || to)) {
-        const value = dateKey(row)
+        // Se compara solo el día para que la hora no deje fuera registros del último día del rango.
+        const value = datePart(dateKey(row))
         if (from && value < from) return false
         if (to && value > to) return false
       }

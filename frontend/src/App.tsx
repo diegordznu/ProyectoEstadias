@@ -21,95 +21,60 @@ type InventoryItem = {
 }
 
 type TransferRecord = {
+  /** Fecha y hora del movimiento: 'YYYY-MM-DD HH:mm'. */
   date: string
   piece: string
   lote: string
-  saldo: number
+  /** Proveedor u origen del material. */
   origin: string
   dest: string
-  piezaResult: string
   qty: number
 }
 
 type ColumnDef = { key: keyof TransferRecord; label: string }
 
-type PlantTable = { columns: ColumnDef[]; transfers: TransferRecord[] }
+/** Estructura común para las tablas de todas las plantas. */
+const TRANSFER_COLUMNS: ColumnDef[] = [
+  { key: 'date', label: 'FECHA' },
+  { key: 'piece', label: 'MATERIAL' },
+  { key: 'lote', label: 'LOTE' },
+  { key: 'origin', label: 'PROVEEDOR (ORIGEN)' },
+  { key: 'dest', label: 'DESTINO' },
+  { key: 'qty', label: 'CANTIDAD' },
+]
 
-const PLANT_TABLES: Record<string, PlantTable> = {
-  'Planta 1': {
-    columns: [
-      { key: 'date', label: 'FECHA' },
-      { key: 'piece', label: 'MATERIAL' },
-      { key: 'lote', label: 'LOTE' },
-      { key: 'saldo', label: 'SALDO' },
-      { key: 'origin', label: 'ORIGEN' },
-      { key: 'dest', label: 'DESTINO' },
-      { key: 'piezaResult', label: 'PIEZA RESULT.' },
-      { key: 'qty', label: 'CANTIDAD' },
-    ],
-    transfers: [
-      { date: daysAgo(1), piece: 'MOD-AC-01', lote: 'L-1001', saldo: 150, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
-      { date: daysAgo(4), piece: 'RAD-AL-99', lote: 'L-1002', saldo: 80, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
-      { date: daysAgo(9), piece: 'SOP-MT-55', lote: 'L-1003', saldo: 200, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
-      { date: daysAgo(22), piece: 'SEN-TM-44', lote: 'L-1004', saldo: 60, origin: 'Planta 1', dest: 'Planta 2', piezaResult: 'SEN-TM-44', qty: 35 },
-      { date: daysAgo(74), piece: 'COR-VT-88', lote: 'L-1005', saldo: 120, origin: 'Planta 3', dest: 'Planta 1', piezaResult: 'COR-VT-88-R', qty: 50 },
-      { date: monthsAgo(5), piece: 'BOM-AG-77', lote: 'L-1006', saldo: 45, origin: 'Planta 1', dest: 'Planta 6', piezaResult: 'BOM-AG-77', qty: 12 },
-    ],
-  },
-  'Planta 2': {
-    columns: [
-      { key: 'date', label: 'FECHA' },
-      { key: 'piece', label: 'MATERIAL' },
-      { key: 'origin', label: 'ORIGEN' },
-      { key: 'dest', label: 'DESTINO' },
-      { key: 'qty', label: 'CANTIDAD' },
-    ],
-    transfers: [
-      { date: daysAgo(2), piece: 'MOD-AC-01', lote: 'L-1001', saldo: 45, origin: 'Planta 2', dest: 'Planta 1', piezaResult: 'MOD-AC-01', qty: 20 },
-      { date: daysAgo(11), piece: 'FIL-CB-22', lote: 'L-2001', saldo: 800, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
-      { date: daysAgo(38), piece: 'INT-FR-66', lote: 'L-2002', saldo: 25, origin: 'Planta 2', dest: 'Planta 3', piezaResult: 'INT-FR-66-R', qty: 8 },
-    ],
-  },
-  'Planta 3': {
-    columns: [
-      { key: 'date', label: 'FECHA' },
-      { key: 'piece', label: 'MATERIAL' },
-      { key: 'lote', label: 'LOTE' },
-      { key: 'origin', label: 'ORIGEN' },
-      { key: 'dest', label: 'DESTINO' },
-      { key: 'piezaResult', label: 'PIEZA RESULT.' },
-      { key: 'qty', label: 'CANTIDAD' },
-    ],
-    transfers: [
-      { date: daysAgo(3), piece: 'RAD-AL-99', lote: 'L-1002', saldo: 120, origin: 'Planta 1', dest: 'Planta 3', piezaResult: 'RAD-AL-99-C', qty: 15 },
-      { date: daysAgo(17), piece: 'VAL-EX-33', lote: 'L-3001', saldo: 70, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
-      { date: daysAgo(65), piece: 'SOP-MT-55', lote: 'L-3002', saldo: 90, origin: 'Planta 3', dest: 'Planta 2', piezaResult: 'SOP-MT-55', qty: 18 },
-    ],
-  },
-  'Planta 6': {
-    columns: [
-      { key: 'date', label: 'FECHA' },
-      { key: 'piece', label: 'MATERIAL' },
-      { key: 'lote', label: 'LOTE' },
-      { key: 'saldo', label: 'SALDO' },
-      { key: 'origin', label: 'ORIGEN' },
-      { key: 'dest', label: 'DESTINO' },
-      { key: 'qty', label: 'CANTIDAD' },
-    ],
-    transfers: [
-      { date: daysAgo(5), piece: 'SOP-MT-55', lote: 'L-1003', saldo: 800, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'SOP-MT-55', qty: 40 },
-      { date: daysAgo(8), piece: 'FIL-CB-22', lote: 'L-2001', saldo: 600, origin: 'Planta 2', dest: 'Planta 6', piezaResult: 'FIL-CB-22-R', qty: 100 },
-      { date: daysAgo(13), piece: 'VAL-EX-33', lote: 'L-3001', saldo: 95, origin: 'Planta 3', dest: 'Planta 6', piezaResult: 'VAL-EX-33-R', qty: 25 },
-      { date: daysAgo(29), piece: 'TUB-RD-11', lote: 'L-6001', saldo: 250, origin: 'Planta 6', dest: 'Planta 2', piezaResult: 'TUB-RD-11-R', qty: 60 },
-      { date: daysAgo(47), piece: 'MOD-AC-01', lote: 'L-6002', saldo: 130, origin: 'Planta 6', dest: 'Planta 3', piezaResult: 'MOD-AC-01', qty: 22 },
-      { date: monthsAgo(4), piece: 'COR-VT-88', lote: 'L-6003', saldo: 310, origin: 'Planta 6', dest: 'Planta 1', piezaResult: 'COR-VT-88-R', qty: 75 },
-    ],
-  },
+const PLANT_TRANSFERS: Record<string, TransferRecord[]> = {
+  'Planta 1': [
+    { date: daysAgo(1, '08:15'), piece: 'MOD-AC-01', lote: 'L-1001', origin: 'Planta 2', dest: 'Planta 1', qty: 20 },
+    { date: daysAgo(4, '10:42'), piece: 'RAD-AL-99', lote: 'L-1002', origin: 'Planta 1', dest: 'Planta 3', qty: 15 },
+    { date: daysAgo(9, '13:05'), piece: 'SOP-MT-55', lote: 'L-1003', origin: 'Planta 6', dest: 'Planta 1', qty: 40 },
+    { date: daysAgo(22, '16:30'), piece: 'SEN-TM-44', lote: 'L-1004', origin: 'Planta 1', dest: 'Planta 2', qty: 35 },
+    { date: daysAgo(74, '09:20'), piece: 'COR-VT-88', lote: 'L-1005', origin: 'Planta 3', dest: 'Planta 1', qty: 50 },
+    { date: monthsAgo(5, '11:55'), piece: 'BOM-AG-77', lote: 'L-1006', origin: 'Planta 1', dest: 'Planta 6', qty: 12 },
+  ],
+  'Planta 2': [
+    { date: daysAgo(2, '07:48'), piece: 'MOD-AC-01', lote: 'L-1001', origin: 'Planta 2', dest: 'Planta 1', qty: 20 },
+    { date: daysAgo(11, '14:10'), piece: 'FIL-CB-22', lote: 'L-2001', origin: 'Planta 2', dest: 'Planta 6', qty: 100 },
+    { date: daysAgo(38, '17:25'), piece: 'INT-FR-66', lote: 'L-2002', origin: 'Planta 2', dest: 'Planta 3', qty: 8 },
+  ],
+  'Planta 3': [
+    { date: daysAgo(3, '09:33'), piece: 'RAD-AL-99', lote: 'L-1002', origin: 'Planta 1', dest: 'Planta 3', qty: 15 },
+    { date: daysAgo(17, '12:40'), piece: 'VAL-EX-33', lote: 'L-3001', origin: 'Planta 3', dest: 'Planta 6', qty: 25 },
+    { date: daysAgo(65, '15:18'), piece: 'SOP-MT-55', lote: 'L-3002', origin: 'Planta 3', dest: 'Planta 2', qty: 18 },
+  ],
+  'Planta 6': [
+    { date: daysAgo(5, '08:02'), piece: 'SOP-MT-55', lote: 'L-1003', origin: 'Planta 6', dest: 'Planta 1', qty: 40 },
+    { date: daysAgo(8, '10:27'), piece: 'FIL-CB-22', lote: 'L-2001', origin: 'Planta 2', dest: 'Planta 6', qty: 100 },
+    { date: daysAgo(13, '13:50'), piece: 'VAL-EX-33', lote: 'L-3001', origin: 'Planta 3', dest: 'Planta 6', qty: 25 },
+    { date: daysAgo(29, '16:12'), piece: 'TUB-RD-11', lote: 'L-6001', origin: 'Planta 6', dest: 'Planta 2', qty: 60 },
+    { date: daysAgo(47, '11:08'), piece: 'MOD-AC-01', lote: 'L-6002', origin: 'Planta 6', dest: 'Planta 3', qty: 22 },
+    { date: monthsAgo(4, '09:45'), piece: 'COR-VT-88', lote: 'L-6003', origin: 'Planta 6', dest: 'Planta 1', qty: 75 },
+  ],
 }
 
-const PLANT_OPTIONS = Object.keys(PLANT_TABLES)
+const PLANT_OPTIONS = Object.keys(PLANT_TRANSFERS)
 
-const allTransfers = Object.values(PLANT_TABLES).flatMap((table) => table.transfers)
+const allTransfers = Object.values(PLANT_TRANSFERS).flat()
 
 const inventoryMaterialKey = (item: InventoryItem) => item.sku
 const transferMaterialKey = (transfer: TransferRecord) => transfer.piece
@@ -149,7 +114,7 @@ function App() {
   })
 
   const plantFilters = useTableFilters<TransferRecord>({
-    rows: selectedPlant ? PLANT_TABLES[selectedPlant].transfers : [],
+    rows: selectedPlant ? PLANT_TRANSFERS[selectedPlant] : [],
     materialKey: transferMaterialKey,
     dateKey: transferDateKey,
   })
@@ -423,7 +388,7 @@ function App() {
                 <table>
                   <thead>
                     <tr>
-                      {PLANT_TABLES[selectedPlant].columns.map((column) => (
+                      {TRANSFER_COLUMNS.map((column) => (
                         <th key={column.key}>{column.label}</th>
                       ))}
                     </tr>
@@ -431,7 +396,7 @@ function App() {
                   <tbody>
                     {plantFilters.filtered.length === 0 ? (
                       <EmptyRows
-                        colSpan={PLANT_TABLES[selectedPlant].columns.length}
+                        colSpan={TRANSFER_COLUMNS.length}
                         filtered={plantFilters.isActive}
                         defaultLabel="NO HAY MOVIMIENTOS REGISTRADOS"
                         onReset={plantFilters.reset}
@@ -439,7 +404,7 @@ function App() {
                     ) : (
                       plantFilters.filtered.map((transfer, index) => (
                         <tr key={`${selectedPlant}-${transfer.date}-${transfer.piece}-${index}`}>
-                          {PLANT_TABLES[selectedPlant].columns.map((column) => (
+                          {TRANSFER_COLUMNS.map((column) => (
                             <td key={column.key}>
                               {column.key === 'qty' ? <strong>{transfer[column.key]}</strong> : transfer[column.key]}
                             </td>

@@ -24,12 +24,25 @@ export function formatDateISO(date: Date): string {
   return format(date, DATE_FORMAT)
 }
 
-export function daysAgo(days: number, base: Date = new Date()): string {
-  return formatDateISO(addDays(base, -days))
+/**
+ * Fecha ISO de hace N días. Con `time` ('HH:mm') devuelve 'YYYY-MM-DD HH:mm',
+ * el formato con hora que usan las tablas de movimientos.
+ */
+export function daysAgo(days: number, time?: string, base: Date = new Date()): string {
+  return withTime(formatDateISO(addDays(base, -days)), time)
 }
 
-export function monthsAgo(months: number, base: Date = new Date()): string {
-  return formatDateISO(addMonths(base, -months))
+export function monthsAgo(months: number, time?: string, base: Date = new Date()): string {
+  return withTime(formatDateISO(addMonths(base, -months)), time)
+}
+
+function withTime(date: string, time?: string): string {
+  return time ? `${date} ${time}` : date
+}
+
+/** Parte de fecha ('YYYY-MM-DD') de un valor que puede incluir hora. */
+export function datePart(value: string): string {
+  return value.slice(0, 10)
 }
 
 /**
@@ -48,11 +61,11 @@ export function resolvePreset(preset: DatePreset, custom: DateRangeValue = {}): 
 
 const PRESET_FROM: Record<Exclude<DatePreset, 'all' | 'custom'>, (today: Date) => string> = {
   today: (today) => formatDateISO(today),
-  d7: (today) => daysAgo(7, today),
-  d15: (today) => daysAgo(15, today),
-  d30: (today) => daysAgo(30, today),
-  m3: (today) => monthsAgo(3, today),
-  m6: (today) => monthsAgo(6, today),
+  d7: (today) => daysAgo(7, undefined, today),
+  d15: (today) => daysAgo(15, undefined, today),
+  d30: (today) => daysAgo(30, undefined, today),
+  m3: (today) => monthsAgo(3, undefined, today),
+  m6: (today) => monthsAgo(6, undefined, today),
 }
 
 export function rangeLabel(range: ResolvedRange): string | null {
