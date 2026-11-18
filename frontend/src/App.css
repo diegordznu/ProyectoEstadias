@@ -458,6 +458,16 @@ th {
   margin-bottom: 18px;
 }
 
+.plant-detail-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.plant-detail-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .plant-detail-header h3 {
   font-size: clamp(1.5rem, 2vw, 2.4rem);
   text-align: left;
@@ -886,6 +896,10 @@ th {
   .plant-detail-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .plant-detail-actions {
+    flex-wrap: wrap;
   }
 
   .context-bar {

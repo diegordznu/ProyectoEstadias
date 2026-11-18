@@ -10,6 +10,7 @@ import { UsersScreen } from './components/users/UsersScreen'
 import { useRemoteData } from './hooks/useRemoteData'
 import { useTableFilters } from './hooks/useTableFilters'
 import { useTheme } from './hooks/useTheme'
+import { exportToExcel, type ExcelColumn } from './lib/exportExcel'
 import type { InventarioMaterial, Movimiento } from './types/inventario'
 import type { Usuario } from './types/user'
 
@@ -24,6 +25,11 @@ const TRANSFER_COLUMNS: ColumnDef[] = [
   { key: 'destino', label: 'DESTINO' },
   { key: 'cantidad', label: 'CANTIDAD' },
 ]
+
+const TRANSFER_EXCEL_COLUMNS: ExcelColumn<Movimiento>[] = TRANSFER_COLUMNS.map((column) => ({
+  ...column,
+  width: column.key === 'fecha' ? 18 : column.key === 'cantidad' ? 12 : 20,
+}))
 
 const NO_ROWS: never[] = []
 
@@ -105,6 +111,28 @@ function App() {
   })
 
   const resetPlantFilters = plantFilters.reset
+
+  const [exporting, setExporting] = useState(false)
+
+  // Exporta exactamente lo que se ve en la tabla: filas ya filtradas y en el mismo orden.
+  const handleExportPlantMovements = async () => {
+    if (!selectedPlant || plantFilters.filtered.length === 0) return
+    setExporting(true)
+    try {
+      const today = new Date().toLocaleDateString('sv-SE') // 'YYYY-MM-DD' en hora local
+      await exportToExcel({
+        rows: plantFilters.filtered,
+        columns: TRANSFER_EXCEL_COLUMNS,
+        fileName: `movimientos_${selectedPlant}_${today}`,
+        sheetName: selectedPlant,
+      })
+      showMessage(`SE EXPORTARON ${plantFilters.filtered.length} REGISTROS`)
+    } catch {
+      showError('NO SE PUDO EXPORTAR EL ARCHIVO')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // Cada planta tiene sus propios registros: al cambiar de planta se limpian los filtros.
   useEffect(() => {
@@ -353,9 +381,20 @@ function App() {
             <>
               <div className="plant-detail-header">
                 <h3>{selectedPlant}</h3>
-                <button type="button" className="btn-gray compact" onClick={() => setSelectedPlant(null)}>
-                  VOLVER
-                </button>
+                <div className="plant-detail-actions">
+                  <button
+                    type="button"
+                    className="btn-green compact"
+                    onClick={handleExportPlantMovements}
+                    disabled={exporting || plantMovements.loading || plantFilters.filtered.length === 0}
+                    title="Exporta a Excel los registros visibles con los filtros actuales"
+                  >
+                    {exporting ? 'EXPORTANDO...' : 'EXPORTAR EXCEL'}
+                  </button>
+                  <button type="button" className="btn-gray compact" onClick={() => setSelectedPlant(null)}>
+                    VOLVER
+                  </button>
+                </div>
               </div>
 
               <FilterBar filters={plantFilters} withDate withRoute />
