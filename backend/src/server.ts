@@ -5,6 +5,9 @@ import os from 'node:os';
 import { requireAdmin, requireAuth } from './auth/middleware';
 import { requiredEnv } from './config/env';
 import { createUsersRepository } from './db';
+import { InventarioRepository } from './db/inventarioRepository';
+import { getPool, isDatabaseConfigured } from './db/pool';
+import { createInventarioNoDisponibleRouter, createInventarioRouter } from './routes/inventario';
 import { createAuthRouter } from './routes/auth';
 import { createUsersRouter } from './routes/users';
 import { pingErp } from './services/erpApi';
@@ -44,6 +47,16 @@ app.use('/api/auth', createAuthRouter(usersRepository));
 
 // CRUD de usuarios del sistema: solo para administradores con sesión iniciada.
 app.use('/api/users', requireAuth(usersRepository), requireAdmin, createUsersRouter(usersRepository));
+
+// Inventario y movimientos: cualquier usuario con sesión consulta; registrar exige ADMINISTRADOR o CAPTURISTA.
+// Solo existe sobre PostgreSQL (el inventario se calcula en la BD a partir de los movimientos).
+app.use(
+    '/api/inventario',
+    requireAuth(usersRepository),
+    isDatabaseConfigured()
+        ? createInventarioRouter(new InventarioRepository(getPool()))
+        : createInventarioNoDisponibleRouter(),
+);
 
 /** IPs no internas de esta máquina, para mostrar la URL que deben usar las demás computadoras. */
 function direccionesDeRed(): string[] {

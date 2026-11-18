@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import type { Usuario, UsersRepository } from '../db/usersRepository';
+import type { Usuario, UsuarioTipo, UsersRepository } from '../db/usersRepository';
 import { SESSION_COOKIE, leerToken, motivoSinAcceso, sessionCookieOptions } from './session';
 
 declare global {
@@ -50,3 +50,14 @@ export const requireAdmin: RequestHandler = (req, res, next) => {
     }
     next();
 };
+
+/** Debe ir después de requireAuth. Permite el paso solo a los tipos de usuario indicados. */
+export function requireRoles(...tipos: UsuarioTipo[]): RequestHandler {
+    return (req, res, next) => {
+        if (!req.usuario || !tipos.includes(req.usuario.tipoUsuario)) {
+            res.status(403).json({ errores: ['NO TIENE PERMISO PARA ESTA ACCIÓN'] });
+            return;
+        }
+        next();
+    };
+}

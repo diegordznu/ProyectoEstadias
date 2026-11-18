@@ -654,6 +654,13 @@ th {
   text-align: center;
 }
 
+/* Avisos de carga o error fuera de una tabla (p. ej. la lista de plantas). */
+.screen-status {
+  text-align: center;
+  font-weight: bold;
+  margin: 0 auto 30px;
+}
+
 .empty-filtered {
   display: flex;
   flex-direction: column;

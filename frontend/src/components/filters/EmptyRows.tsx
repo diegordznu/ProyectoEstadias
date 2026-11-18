@@ -24,3 +24,19 @@ export function EmptyRows({ colSpan, filtered, defaultLabel, onReset }: EmptyRow
     </tr>
   )
 }
+
+export type StatusRowProps = {
+  colSpan: number
+  children: string
+}
+
+/** Fila única para avisos de la tabla: cargando o error al consultar la API. */
+export function StatusRow({ colSpan, children }: StatusRowProps) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="empty-cell" role="status">
+        {children}
+      </td>
+    </tr>
+  )
+}

@@ -1,6 +1,6 @@
 # Sistema Grupo Armas — Documentación técnica
 
-> Estado al 14/10/2026. Dirigida al equipo técnico que continúe el desarrollo.
+> Estado al 18/11/2026. Dirigida al equipo técnico que continúe el desarrollo.
 
 ## 1. Resumen
 
@@ -10,9 +10,10 @@ Aplicación web interna para **consultar el inventario de piezas por planta y da
 | --- | --- |
 | Login, sesión y permisos | Implementado (backend + frontend) |
 | Control de usuarios (CRUD) | Implementado sobre PostgreSQL / Supabase |
-| Inventario, seguimiento entre plantas, historial | Solo interfaz, con **datos de ejemplo fijos** en el frontend |
+| Inventario, seguimiento entre plantas, historial | Implementado sobre PostgreSQL / Supabase, con **datos de prueba** (§4.4) |
+| Captura de movimientos | Endpoint con validaciones listo (`POST /api/inventario/movimientos`); **falta la pantalla** |
 | Integración con el ERP | Sin empezar: solo existe una ruta de prueba de conexión |
-| Pruebas automatizadas | No hay |
+| Pruebas automatizadas | Solo `backend/sql/pruebas_inventario.sql` (reglas de la BD, se deshace al final) |
 
 ## 2. Arquitectura
 
@@ -20,7 +21,7 @@ Aplicación web interna para **consultar el inventario de piezas por planta y da
 flowchart LR
     B[Navegador] -->|/ y /api| V[Vite dev server :5173]
     V -->|proxy /api| E[Backend Express :3000]
-    E -->|pg| S[(Supabase / PostgreSQL<br/>tabla usuarios)]
+    E -->|pg| S[(Supabase / PostgreSQL<br/>usuarios · materiales · ubicaciones · movimientos)]
     E -.->|fetch, solo ping| ERP[API del ERP]
 ```
 
@@ -43,35 +44,42 @@ ProyectoEstadias/
 ├── backend/
 │   ├── sql/
 │   │   ├── 01_usuarios.sql                    # esquema de la tabla usuarios
-│   │   └── 02_migracion_local_a_supabase.sql  # usuarios migrados desde el PostgreSQL local
+│   │   ├── 02_migracion_local_a_supabase.sql  # usuarios migrados desde el PostgreSQL local
+│   │   ├── 03_inventario.sql                  # materiales, ubicaciones, movimientos y vistas
+│   │   ├── 04_datos_prueba.sql                # materiales, proveedores y movimientos ficticios
+│   │   └── pruebas_inventario.sql             # pruebas de las reglas de la BD (no deja datos)
 │   └── src/
 │       ├── server.ts            # arranque, middlewares y montaje de rutas
 │       ├── config/env.ts        # requiredEnv(): falla si falta una variable
 │       ├── auth/
 │       │   ├── session.ts       # JWT, opciones de cookie, regla de estatus/vigencia
-│       │   ├── middleware.ts    # requireAuth, requireAdmin
+│       │   ├── middleware.ts    # requireAuth, requireAdmin, requireRoles
 │       │   └── loginAttempts.ts # bloqueo por intentos fallidos (memoria)
 │       ├── db/
 │       │   ├── usersRepository.ts          # tipos + interfaz UsersRepository
 │       │   ├── postgresUsersRepository.ts  # implementación PostgreSQL
 │       │   ├── memoryUsersRepository.ts    # implementación en memoria
+│       │   ├── inventarioRepository.ts     # inventario, movimientos y sus reglas
 │       │   ├── pool.ts                     # pool de conexiones pg
 │       │   └── index.ts                    # elige la implementación según el .env
 │       ├── routes/
 │       │   ├── auth.ts          # /api/auth
-│       │   └── users.ts         # /api/users
-│       ├── validation/users.ts  # validación y normalización de usuarios
+│       │   ├── users.ts         # /api/users
+│       │   └── inventario.ts    # /api/inventario
+│       ├── validation/
+│       │   ├── users.ts         # validación y normalización de usuarios
+│       │   └── movimientos.ts   # validación de un movimiento nuevo
 │       ├── services/erpApi.ts   # cliente mínimo del ERP (ping)
-│       └── scripts/crearAdmin.ts
+│       └── scripts/            # crearAdmin.ts, cargarDatosPrueba.ts
 ├── frontend/
 │   └── src/
-│       ├── App.tsx              # pantallas, navegación y datos de ejemplo
-│       ├── api/                 # client.ts, auth.ts, users.ts
+│       ├── App.tsx              # pantallas y navegación
+│       ├── api/                 # client.ts, auth.ts, users.ts, inventario.ts
 │       ├── components/users/UsersScreen.tsx
 │       ├── components/filters/  # filtros por fecha y material
-│       ├── hooks/useTableFilters.ts
+│       ├── hooks/               # useTableFilters.ts, useRemoteData.ts (carga desde la API)
 │       ├── lib/dates.ts
-│       └── types/user.ts
+│       └── types/               # user.ts, inventario.ts
 └── docs/DOCUMENTACION.md
 ```
 
@@ -105,11 +113,15 @@ En el frontend, `VITE_API_URL` es opcional (por defecto `/api`).
 cd backend && npm install
 cd ../frontend && npm install
 
-# 2. Esquema: ejecutar backend/sql/01_usuarios.sql en el SQL Editor de Supabase
+# 2. Esquema: ejecutar en el SQL Editor de Supabase, en orden,
+#    backend/sql/01_usuarios.sql y backend/sql/03_inventario.sql
 
 # 3. Crear (o recuperar) un administrador
 cd backend
 npm run crear-admin -- USUARIO CONTRASEÑA
+
+# 4. (Opcional) Datos de prueba de inventario
+npm run cargar-datos-prueba
 ```
 
 ### Comandos
@@ -119,6 +131,7 @@ npm run crear-admin -- USUARIO CONTRASEÑA
 | backend | `npm run dev` | Servidor con recarga automática (`tsx watch`) |
 | backend | `npm run build` / `npm start` | Compila a `dist/` y lo ejecuta |
 | backend | `npm run crear-admin -- USUARIO CONTRASEÑA` | Crea un ADMINISTRADOR o convierte uno existente en admin activo con contraseña nueva |
+| backend | `npm run cargar-datos-prueba` | Carga `sql/04_datos_prueba.sql` (40 materiales, 12 proveedores, 283 movimientos). Se niega si ya hay movimientos. |
 | frontend | `npm run dev` | Vite en `http://localhost:5173` |
 | frontend | `npm run build` | Chequeo de tipos + build de producción |
 | frontend | `npm run lint` | ESLint |
@@ -152,6 +165,40 @@ Todo acceso a usuarios pasa por la interfaz `UsersRepository` (`listar`, `buscar
 - **PostgreSQL** si hay `DATABASE_URL` o `PGDATABASE`.
 - **Memoria** si no. Trae 8 usuarios de ejemplo con contraseña `123456` (admin: `JONATHAN SARABIA`; `ACONTRERAS` está inactivo). Los cambios se pierden al reiniciar. Útil para desarrollar y probar sin tocar Supabase.
 
+### 4.4 Inventario y movimientos
+
+Definido en `backend/sql/03_inventario.sql`. Igual que `usuarios`, las tablas tienen RLS activo y sin políticas: el backend (rol `postgres`) lee y escribe; la API pública de Supabase no ve nada (las vistas usan `security_invoker`).
+
+| Tabla | Contenido | Reglas principales |
+| --- | --- | --- |
+| `materiales` | `id` (bigint identity), `sku` `VARCHAR(30)`, `nombre` `VARCHAR(120)`, `estatus` booleano (true = activo) | SKU único y no vacío; nombre obligatorio |
+| `ubicaciones` | `id`, `nombre`, `tipo`, `estatus` | Nombre único. `tipo`: `PLANTA` (Planta 1, 2, 3, 6), `PROVEEDOR` (solo origen) o `CONSUMO` (solo destino) |
+| `movimientos` | `fecha` (timestamp, hasta el minuto), `material_id`, `lote`, `origen_id`/`origen_tipo`, `destino_id`/`destino_tipo`, `cantidad`, `usuario_id` (quién capturó), `creado_en` | Cantidad > 0; origen ≠ destino; un lado debe ser planta; el tipo guardado debe coincidir con la ubicación (llave foránea compuesta) |
+
+Cada movimiento se captura **una sola vez**:
+
+| Origen → Destino | Efecto |
+| --- | --- |
+| Proveedor → Planta | Entrada: suma en la planta destino |
+| Planta → Planta | Traspaso: resta en origen, suma en destino |
+| Planta → Consumo | Salida: resta en la planta de origen |
+
+Vistas:
+
+- `v_movimientos`: movimientos con SKU y nombres de origen/destino. La tabla de cada planta es `WHERE origen = 'Planta X' OR destino = 'Planta X'`.
+- `v_inventario`: existencia por material y planta (destino suma, origen resta). **El inventario no se guarda**: se calcula siempre de los movimientos.
+
+Reglas que valida el backend al registrar (`InventarioRepository.registrarMovimiento`), porque la BD sola no puede:
+
+- Material, origen y destino existentes y **activos**.
+- Si sale de una planta, **el lote debe tener existencia suficiente en esa planta**, y la existencia del lote no puede quedar negativa en ningún momento de su historia (impide capturar con fecha anterior una salida que no tenía material).
+- Las salidas del mismo lote desde la misma planta se serializan (`pg_advisory_xact_lock`): dos capturas simultáneas no pueden gastar la misma existencia.
+- Fecha obligatoria, real y no futura; lote obligatorio (se guarda en mayúsculas, máx. 30); cantidad entera entre 1 y 1,000,000.
+
+Una planta inactiva deja de aparecer como columna del inventario, salvo que todavía tenga existencias.
+
+**Datos de prueba** (`04_datos_prueba.sql`): 40 materiales, 12 proveedores ficticios y 283 movimientos entre el 18/05/2026 y el 17/11/2026, generados lote por lote para que ninguna existencia quede negativa. Al final del archivo está, comentado, el SQL para quitarlos.
+
 ## 5. Autenticación y permisos
 
 ### Flujo
@@ -181,7 +228,7 @@ sequenceDiagram
 | Estatus y vigencia | No entra si está `INACTIVO` o si la fecha local del servidor está fuera de `[vigencia_fini, vigencia_fechafin]`. Fechas vacías = sin límite. |
 | Mensajes de error | Credenciales incorrectas o usuario inexistente → siempre `USUARIO O CONTRASEÑA INCORRECTOS` (mismo tiempo de respuesta, para no revelar qué usuarios existen). Solo si la contraseña es correcta se informa `USUARIO INACTIVO` / `USUARIO FUERA DE VIGENCIA`. |
 | Intentos fallidos | 5 fallos para la misma combinación usuario + IP → bloqueo de 5 min (HTTP 429). Se guarda en memoria: se reinicia con el servidor y no se comparte entre instancias. |
-| Roles | Solo `ADMINISTRADOR` puede usar `/api/users` y ve el botón "Usuarios del sistema". `CAPTURISTA` y `CONSULTA` tienen hoy el mismo acceso al resto. |
+| Roles | Solo `ADMINISTRADOR` puede usar `/api/users` y ve el botón "Usuarios del sistema". Registrar movimientos: `ADMINISTRADOR` y `CAPTURISTA`. Consultar inventario y movimientos: los tres tipos. |
 | Auto-protección | Un admin no puede quitarse el rol, desactivarse, dejarse fuera de vigencia ni eliminarse a sí mismo. |
 
 ### Frontend
@@ -228,6 +275,24 @@ Cuerpo de usuario:
 
 Validaciones (`validation/users.ts`, replicadas en `UsersScreen.tsx`): usuario de 3 a 30 caracteres (se convierte a mayúsculas), contraseña de al menos 6, tipo y estatus dentro de sus opciones, fechas reales, y vigencia final ≥ inicial.
 
+### `/api/inventario` (requiere sesión)
+
+| Método | Ruta | Quién | Respuestas |
+| --- | --- | --- | --- |
+| GET | `/` | Todos | 200 `{ plantas: string[], materiales: [{ sku, nombre, existencias: { "Planta 1": n, ... }, total }] }` |
+| GET | `/materiales` | Todos | 200 `[{ id, sku, nombre, activo }]` |
+| GET | `/ubicaciones` | Todos | 200 `[{ id, nombre, tipo, activo }]` (plantas, proveedores, consumos) |
+| GET | `/movimientos?planta=Planta 1` | Todos | 200 `[{ id, fecha, material, lote, origen, destino, cantidad }]`, más reciente primero. Sin `planta`, todos. |
+| POST | `/movimientos` | ADMINISTRADOR, CAPTURISTA | 201 movimiento creado · 400 validación o regla · 403 rol · 409 existencia insuficiente |
+
+Cuerpo de un movimiento (`fecha` acepta `YYYY-MM-DD HH:mm` o `YYYY-MM-DDTHH:mm` de un `<input type="datetime-local">`):
+
+```json
+{ "fecha": "2026-11-18 08:00", "materialId": 1, "lote": "L-2605-014", "origenId": 1, "destinoId": 2, "cantidad": 50 }
+```
+
+Sin `DATABASE_URL`, `/api/inventario` responde 503: el inventario no tiene versión en memoria.
+
 ### Otras
 
 | Método | Ruta | Nota |
@@ -243,12 +308,12 @@ La navegación es por estado (`activeScreen` en `App.tsx`), sin router.
 | --- | --- | --- |
 | Login | Usuario y contraseña | API real |
 | Menú | Accesos a las pantallas y cerrar sesión | — |
-| Inventario general | Existencias por pieza/SKU en plantas 1, 2, 3 y 6 + total | Ejemplo (`initialInventory`) |
-| Seguimiento entre plantas | Movimientos de la planta elegida; columnas distintas por planta (fecha, material, lote, saldo, origen, destino, pieza resultante, cantidad) | Ejemplo (`PLANT_TABLES`) |
-| Historial de traspasos | Todos los movimientos de todas las plantas | Ejemplo (derivado de `PLANT_TABLES`) |
+| Inventario general | Existencias por pieza/SKU en cada planta + total global | API (`GET /api/inventario`) |
+| Seguimiento entre plantas | Botones de las plantas activas; movimientos de la planta elegida con FECHA (con hora), MATERIAL, LOTE, ORIGEN, DESTINO, CANTIDAD | API (`/ubicaciones`, `/movimientos?planta=`) |
+| Historial de traspasos | Todos los movimientos, mismas columnas | API (`GET /api/inventario/movimientos`) |
 | Usuarios del sistema (solo admin) | Alta, edición y baja de usuarios | API real |
 
-Las tablas de inventario, seguimiento e historial usan `useTableFilters` + `FilterBar`: filtro por material y, donde hay fecha, por rango de fechas.
+Las tablas de inventario, seguimiento e historial usan `useTableFilters` + `FilterBar`: filtro por material y, donde hay fecha, por rango de fechas (se compara solo el día, aunque la fecha traiga hora). Los datos se cargan con `useRemoteData` cada vez que se abre la pantalla; mientras tanto la tabla muestra "CARGANDO..." y, si la API falla, el mensaje de error.
 
 ## 8. Integración con el ERP
 
@@ -271,9 +336,9 @@ Preguntas abiertas:
 
 ## 9. Pendientes
 
-- [ ] Integrar el ERP y reemplazar los datos de ejemplo de inventario, seguimiento e historial (§8).
-- [ ] Definir dónde se registran los traspasos capturados.
-- [ ] Definir qué distingue a `CAPTURISTA` de `CONSULTA`; hoy tienen el mismo acceso.
+- [ ] Pantalla para capturar movimientos (el endpoint ya existe, §6).
+- [ ] Altas y bajas de materiales y proveedores (hoy solo por SQL).
+- [ ] Sustituir los datos de prueba por materiales y proveedores reales (o integrarlos desde el ERP, §8).
 - [ ] Decidir si `GET /erp/ping` debe requerir sesión.
 - [ ] Agregar pruebas automatizadas (backend y frontend).
 - [ ] Definir el despliegue: con frontend y backend en orígenes distintos haría falta CORS y revisar `SameSite` de la cookie; con varias instancias del backend, el bloqueo por intentos debe moverse a un almacenamiento compartido.
