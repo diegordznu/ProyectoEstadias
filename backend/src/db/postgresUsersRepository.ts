@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import type {
+    SesionUsuario,
     Usuario,
     UsuarioAltaInput,
     UsuarioConPassword,
@@ -30,10 +31,28 @@ export class PostgresUsersRepository implements UsersRepository {
 
     async buscarPorUsuario(usuario: string): Promise<UsuarioConPassword | null> {
         const { rows } = await this.pool.query<UsuarioConPassword>(
-            `SELECT ${COLUMNAS}, password_hash AS "passwordHash" FROM usuarios WHERE usuario = $1`,
+            `SELECT ${COLUMNAS}, password_hash AS "passwordHash", sesion_version AS "sesionVersion"
+               FROM usuarios WHERE usuario = $1`,
             [usuario],
         );
         return rows[0] ?? null;
+    }
+
+    async buscarSesion(id: number): Promise<SesionUsuario | null> {
+        const { rows } = await this.pool.query<Usuario & { sesionVersion: number }>(
+            `SELECT ${COLUMNAS}, sesion_version AS "sesionVersion" FROM usuarios WHERE id = $1`,
+            [id],
+        );
+        if (!rows[0]) return null;
+        const { sesionVersion, ...usuario } = rows[0];
+        return { usuario, sesionVersion };
+    }
+
+    async cerrarSesiones(id: number, version: number): Promise<void> {
+        await this.pool.query(
+            'UPDATE usuarios SET sesion_version = sesion_version + 1 WHERE id = $1 AND sesion_version = $2',
+            [id, version],
+        );
     }
 
     async crear(input: UsuarioAltaInput): Promise<Usuario> {
@@ -61,7 +80,9 @@ export class PostgresUsersRepository implements UsersRepository {
                     vigencia_fini = $3,
                     vigencia_fechafin = $4,
                     estatus = $5,
-                    password_hash = COALESCE($6, password_hash)
+                    password_hash = COALESCE($6::varchar, password_hash),
+                    -- Contraseña nueva: los tokens emitidos con la anterior dejan de servir.
+                    sesion_version = sesion_version + CASE WHEN $6::varchar IS NULL THEN 0 ELSE 1 END
               WHERE id = $7
              RETURNING ${COLUMNAS}`,
             [

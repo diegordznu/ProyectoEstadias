@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Certificados HTTPS locales (llave privada: nunca subirla)
+certs/
+*.pem

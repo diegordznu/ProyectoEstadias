@@ -45,16 +45,18 @@ ProyectoEstadias/
 ├── vercel.json                  # build, rewrites /api, región y encabezados de seguridad
 ├── tsconfig.json                # solo para api/ (lo usa Vercel al compilar la función)
 ├── backend/
-│   ├── sql/                     # respaldo del esquema que ya está en Supabase (no se ejecuta)
+│   ├── sql/                     # respaldo del esquema (01, 03) y migraciones a ejecutar a mano (04, 05)
 │   │   ├── 01_usuarios.sql      # tabla usuarios
-│   │   └── 03_inventario.sql    # materiales, ubicaciones, movimientos y vistas
+│   │   ├── 03_inventario.sql    # materiales, ubicaciones, movimientos y vistas
+│   │   ├── 04_sesiones.sql      # columna sesion_version (revocación de sesiones)
+│   │   └── 05_rol_app.sql       # rol app_inventario de mínimo privilegio
 │   └── src/
 │       ├── app.ts               # app de Express: middlewares, rutas, 404 y errores
-│       ├── server.ts            # arranque local (listen + IPs de la red)
+│       ├── server.ts            # arranque local (listen solo en 127.0.0.1)
 │       ├── config/env.ts        # requiredEnv(): falla si falta una variable
 │       ├── config/tiempo.ts     # "hoy" y "ahora" en la zona del negocio (APP_TIMEZONE)
 │       ├── auth/
-│       │   ├── session.ts       # JWT, opciones de cookie, regla de estatus/vigencia
+│       │   ├── session.ts       # JWT con versión, cookie, HTTPS, regla de estatus/vigencia
 │       │   ├── middleware.ts    # requireAuth, requireAdmin, requireRoles
 │       │   └── loginAttempts.ts # bloqueo por intentos fallidos (memoria)
 │       ├── db/
@@ -98,13 +100,15 @@ Copiar `backend/.env.example` a `backend/.env` y llenar:
 | --- | --- | --- |
 | `PORT` | No (3000) | Puerto del backend. Si se cambia, ajustar el proxy de `vite.config.ts`. |
 | `JWT_SECRET` | **Sí** | Firma de las sesiones. Sin ella el servidor no arranca. Generar con `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`. Usar uno distinto por ambiente. |
-| `DATABASE_URL` | **Sí** | Cadena de conexión a Supabase. Sin ella el servidor no arranca. |
+| `DATABASE_URL` | **Sí** | Cadena de conexión a Supabase con el rol `app_inventario` (§4.4). Sin ella el servidor no arranca. |
+| `DATABASE_CA_CERT` | **Sí en Vercel** | Certificado raíz de Supabase (PEM). Con él la conexión verifica el certificado del servidor (CA y nombre del host). En Vercel, sin él la API no arranca; en local solo muestra un aviso. |
+| `HOST` | No (`127.0.0.1`) | Interfaz donde escucha el backend local. Por defecto solo esta máquina: la red entra por el HTTPS de Vite (§3.2). |
 | `APP_TIMEZONE` | No (`America/Mexico_City`) | Zona para "hoy" (vigencias) y "ahora" (fechas futuras). Vercel corre en UTC, por eso no se usa la hora del sistema. |
 | `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | No | Alternativa a `DATABASE_URL`; solo se leen si ésta está vacía. |
 
 En el frontend, `VITE_API_URL` es opcional (por defecto `/api`).
 
-**Cadena de Supabase:** Dashboard → botón **Connect** → **Connection String** → método **Transaction pooler** (puerto 6543; es el indicado para Vercel, donde cada función abre conexiones cortas). Agregar al final `?uselibpqcompat=true&sslmode=require` (ver `.env.example`). La contraseña es la de la **base de datos**, no la de la cuenta; se cambia en *Project Settings → Database → Reset database password*. Caracteres especiales en la contraseña deben ir codificados en URL (`@` → `%40`).
+**Cadena de Supabase:** Dashboard → botón **Connect** → **Connection String** → método **Transaction pooler** (puerto 6543; es el indicado para Vercel, donde cada función abre conexiones cortas). Cambiar el usuario `postgres.<proyecto>` por `app_inventario.<proyecto>` (§4.4); no hace falta agregar parámetros `ssl*`: el cifrado y la verificación los da `DATABASE_CA_CERT` (*Project Settings → Database → SSL Configuration → Download certificate*). La contraseña es la de la **base de datos**, no la de la cuenta; se cambia en *Project Settings → Database → Reset database password*. Caracteres especiales en la contraseña deben ir codificados en URL (`@` → `%40`).
 
 ### Primera vez
 
@@ -118,7 +122,11 @@ cd backend
 npm run crear-admin -- USUARIO CONTRASEÑA
 ```
 
-El esquema y los datos ya están en Supabase. `backend/sql/` queda solo como respaldo del esquema por si hubiera que recrear la BD.
+El esquema y los datos ya están en Supabase. `backend/sql/` es el respaldo del esquema por si hubiera que recrear la BD (en orden: `01`, `03`, `04`, `05`).
+
+**Migraciones pendientes en una BD existente** (SQL Editor de Supabase, una sola vez y antes de desplegar este backend):
+1. `04_sesiones.sql`: columna `sesion_version` (revocación de sesiones, §5).
+2. `05_rol_app.sql`: rol `app_inventario` de mínimo privilegio (§4.4). Después, en otra consulta: `ALTER ROLE app_inventario PASSWORD '<contraseña larga y aleatoria>';` y actualizar `DATABASE_URL` en `.env` y en Vercel.
 
 ### Comandos
 
@@ -127,7 +135,7 @@ El esquema y los datos ya están en Supabase. `backend/sql/` queda solo como res
 | backend | `npm run dev` | Servidor con recarga automática (`tsx watch`) |
 | backend | `npm run build` / `npm start` | Compila a `dist/` y lo ejecuta |
 | backend | `npm run crear-admin -- USUARIO CONTRASEÑA` | Crea un ADMINISTRADOR o convierte uno existente en admin activo con contraseña nueva |
-| frontend | `npm run dev` | Vite en `http://localhost:5173` |
+| frontend | `npm run dev` | Vite en `http://localhost:5173` (o `https://<IP>:5173` en la red local, §3.2) |
 | frontend | `npm run build` | Chequeo de tipos + build de producción |
 | frontend | `npm run lint` | ESLint |
 
@@ -139,20 +147,35 @@ Un solo proyecto de Vercel sirve el frontend (estático) y la API (función serv
 - **Build:** `tsc` del backend (si hay errores de tipos, el deploy falla) y `vite build` del frontend → `frontend/dist`.
 - **API:** `/api/*` se reescribe a `api/index.ts`, que exporta la app de Express.
 - **Región:** `pdx1` (Oregón), la misma zona de AWS que Supabase (`us-west-2`), para que cada consulta tarde lo mínimo.
-- **Encabezados:** `nosniff`, `X-Frame-Options: DENY`, HSTS y `Cache-Control: no-store` en la API.
+- **Encabezados:** `Content-Security-Policy` (solo recursos del mismo origen, sin scripts en línea; por eso el script del tema está en `frontend/public/tema.js`), `nosniff`, `X-Frame-Options: DENY`, HSTS y `Cache-Control: no-store` en la API.
 
 Pasos (una sola vez):
 
 1. En Vercel: **Add New → Project**, importar el repositorio de GitHub. **Root Directory: la raíz del repo** (no `frontend/` ni `backend/`). El *Framework Preset* se deja en *Other*: `vercel.json` ya define todo.
 2. En **Settings → Environment Variables** (Production y Preview):
    - `JWT_SECRET`: uno **nuevo**, distinto al de desarrollo.
-   - `DATABASE_URL`: la cadena del *Transaction pooler* (ver arriba).
+   - `DATABASE_URL`: la cadena del *Transaction pooler* con el usuario `app_inventario.<proyecto>` (ver arriba).
+   - `DATABASE_CA_CERT`: el contenido del certificado de Supabase (se puede pegar multilínea).
    - Opcional: `APP_TIMEZONE`.
 3. **Deploy.** Cada push a `main` vuelve a desplegar; las ramas generan *Preview deployments* (usan la misma BD).
 
 Comprobar después del deploy: `https://<dominio>/api/auth/me` debe responder `401` en JSON; si responde `500`, revisar en **Logs** de Vercel que las variables estén configuradas.
 
 Para probar el build de Vercel en local: `npx vercel dev` (requiere `vercel link`).
+
+### 3.2 Uso en red local
+
+Sin configuración extra, Vite y el backend solo responden en esta máquina (`localhost`). Para que otras computadoras de la red entren, Vite debe servir por **HTTPS**: así la contraseña y la cookie de sesión no viajan en texto plano. El backend además rechaza con 403 cualquier petición por HTTP que no venga de esta misma máquina.
+
+1. Instalar [mkcert](https://github.com/FiloSottile/mkcert) y generar el certificado en `frontend/certs/` (ignorada por git; contiene una llave privada):
+   ```bash
+   mkcert -install
+   mkdir -p frontend/certs
+   mkcert -cert-file frontend/certs/servidor.pem -key-file frontend/certs/servidor-key.pem <hostname> <IP> localhost
+   ```
+2. Copiar `frontend/.env.example` a `frontend/.env.local` y descomentar `DEV_HTTPS_CERT` y `DEV_HTTPS_KEY`.
+3. `npm run dev` en `frontend/`: ahora escucha en la red en `https://<IP>:5173`.
+4. En cada computadora cliente, instalar la CA de mkcert (`mkcert -CAROOT` muestra dónde está `rootCA.pem`) para que el navegador no muestre advertencias. Nunca compartir `rootCA-key.pem`.
 
 ## 4. Base de datos
 
@@ -169,16 +192,17 @@ Definida en `backend/sql/01_usuarios.sql`.
 | `vigencia_fini` | `DATE` | Inicio de vigencia; `NULL` = sin límite |
 | `vigencia_fechafin` | `DATE` | Fin de vigencia; `NULL` = sin límite |
 | `estatus` | `VARCHAR(10)` | `ACTIVO` (default) o `INACTIVO` |
+| `sesion_version` | `INTEGER` | Versión de sesión (default 0); se incrementa al cerrar sesión o cambiar la contraseña |
 
-RLS activo y sin políticas: solo el backend (rol `postgres`) la lee.
+RLS activo; la única política es para el rol del backend `app_inventario` (§4.4). La API pública de Supabase no la ve.
 
 ### 4.2 Repositorio
 
-Todo acceso a usuarios pasa por la interfaz `UsersRepository` (`listar`, `buscarPorId`, `buscarPorUsuario`, `crear`, `modificar`, `eliminar`, `existeUsuario`), implementada por `PostgresUsersRepository`. Los usuarios son **reales**: no hay usuarios de ejemplo.
+Todo acceso a usuarios pasa por la interfaz `UsersRepository` (`listar`, `buscarPorId`, `buscarPorUsuario`, `buscarSesion`, `cerrarSesiones`, `crear`, `modificar`, `eliminar`, `existeUsuario`), implementada por `PostgresUsersRepository`. Los usuarios son **reales**: no hay usuarios de ejemplo.
 
 ### 4.3 Inventario y movimientos
 
-Definido en `backend/sql/03_inventario.sql`. Igual que `usuarios`, las tablas tienen RLS activo y sin políticas: el backend (rol `postgres`) lee y escribe; la API pública de Supabase no ve nada (las vistas usan `security_invoker`).
+Definido en `backend/sql/03_inventario.sql`. Igual que `usuarios`, las tablas tienen RLS activo con políticas solo para el rol del backend (§4.4); la API pública de Supabase no ve nada (las vistas usan `security_invoker`).
 
 | Tabla | Contenido | Reglas principales |
 | --- | --- | --- |
@@ -210,6 +234,20 @@ Una planta inactiva deja de aparecer como columna del inventario, salvo que toda
 
 **Datos de prueba** (ya cargados en Supabase, a propósito): 40 materiales, 12 proveedores ficticios y 283 movimientos entre el 18/05/2026 y el 17/11/2026, generados lote por lote para que ninguna existencia quede negativa. Para quitarlos: `DELETE FROM movimientos; DELETE FROM materiales; DELETE FROM ubicaciones WHERE tipo = 'PROVEEDOR';`.
 
+
+### 4.4 Rol de la aplicación (`app_inventario`)
+
+Definido en `backend/sql/05_rol_app.sql`. El backend ya no se conecta como `postgres` (dueño de todo y con `BYPASSRLS`) sino con un rol sin privilegios especiales y sujeto a RLS:
+
+| Objeto | Permisos |
+| --- | --- |
+| `usuarios` | `SELECT`, `INSERT`, `UPDATE`, `DELETE` (+ su secuencia) |
+| `materiales`, `ubicaciones` | `SELECT` |
+| `movimientos` | `SELECT`, `INSERT` (el historial no se puede modificar ni borrar desde la app) |
+| `v_movimientos`, `v_inventario` | `SELECT` |
+
+Si un día se agrega una pantalla que necesite más (p. ej. altas de materiales), hay que otorgar ese permiso y su política en este script.
+
 ## 5. Autenticación y permisos
 
 ### Flujo
@@ -234,7 +272,9 @@ sequenceDiagram
 
 | Tema | Comportamiento |
 | --- | --- |
-| Sesión | JWT firmado con `JWT_SECRET`, payload solo con el `id`. Va en la cookie `sesion`: `HttpOnly`, `SameSite=Strict`, `Secure` en Vercel o cuando `NODE_ENV=production`, duración 8 h. |
+| Sesión | JWT HS256 firmado con `JWT_SECRET`, payload con el `id` y la versión de sesión (`ver`). Va en la cookie `sesion`: `HttpOnly`, `SameSite=Strict`, `Secure` siempre que la conexión sea HTTPS, duración 8 h. |
+| Revocación | Cerrar sesión o cambiarle la contraseña al usuario incrementa `sesion_version`: todos sus tokens anteriores dejan de servir, aunque alguien haya copiado la cookie. Cerrar sesión cierra la de **todos** sus equipos. Si un admin cambia su propia contraseña, recibe un token nuevo y sigue dentro. |
+| HTTPS | La API rechaza (403) peticiones por HTTP salvo desde la misma máquina (§3.2). |
 | Revalidación | `requireAuth` vuelve a leer al usuario de la BD en cada petición: desactivarlo, cambiarle el tipo o vencer su vigencia aplica de inmediato. |
 | Estatus y vigencia | No entra si está `INACTIVO` o si la fecha de hoy en `APP_TIMEZONE` está fuera de `[vigencia_fini, vigencia_fechafin]`. Fechas vacías = sin límite. |
 | Mensajes de error | Credenciales incorrectas o usuario inexistente → siempre `USUARIO O CONTRASEÑA INCORRECTOS` (mismo tiempo de respuesta, para no revelar qué usuarios existen). Solo si la contraseña es correcta se informa `USUARIO INACTIVO` / `USUARIO FUERA DE VIGENCIA`. |
@@ -257,7 +297,7 @@ Todas las respuestas de error tienen la forma `{ "errores": ["MENSAJE", ...] }`,
 | Método | Ruta | Sesión | Cuerpo | Respuestas |
 | --- | --- | --- | --- | --- |
 | POST | `/login` | No | `{ usuario, password }` | 200 usuario + cookie · 400 faltan datos · 401 credenciales · 403 inactivo/vigencia · 429 bloqueado |
-| POST | `/logout` | No | — | 204, borra la cookie |
+| POST | `/logout` | No | — | 204, borra la cookie y revoca los tokens del usuario · 500 si no se pudo revocar (la cookie igual se borra) |
 | GET | `/me` | Sí | — | 200 usuario · 401 sin sesión |
 
 ### `/api/users` (requiere sesión de ADMINISTRADOR)

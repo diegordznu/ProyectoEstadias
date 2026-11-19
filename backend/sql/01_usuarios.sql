@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
     tipo_usuario     VARCHAR(20)  NOT NULL CHECK (tipo_usuario IN ('ADMINISTRADOR', 'CAPTURISTA', 'CONSULTA')),
     vigencia_fini    DATE,
     vigencia_fechafin DATE,
-    estatus          VARCHAR(10)  NOT NULL DEFAULT 'ACTIVO' CHECK (estatus IN ('ACTIVO', 'INACTIVO'))
+    estatus          VARCHAR(10)  NOT NULL DEFAULT 'ACTIVO' CHECK (estatus IN ('ACTIVO', 'INACTIVO')),
+    -- Se incrementa al cerrar sesión o cambiar la contraseña (ver 04_sesiones.sql).
+    sesion_version   INTEGER      NOT NULL DEFAULT 0
 );
 
 -- Índice opcional para búsquedas por nombre de usuario.

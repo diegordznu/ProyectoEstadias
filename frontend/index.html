@@ -8,22 +8,8 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      // Aplica el tema guardado antes del primer pintado para evitar un destello
-      // del color equivocado. Debe coincidir con el valor usado en useTheme.ts.
-      try {
-        var guardado = localStorage.getItem('grupoarmas-theme')
-        var tema =
-          guardado === 'light' || guardado === 'dark'
-            ? guardado
-            : window.matchMedia('(prefers-color-scheme: light)').matches
-              ? 'light'
-              : 'dark'
-        document.documentElement.dataset.theme = tema
-      } catch (error) {
-        document.documentElement.dataset.theme = 'dark'
-      }
-    </script>
+    <!-- Tema antes del primer pintado: archivo aparte por la Content-Security-Policy. -->
+    <script src="/tema.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

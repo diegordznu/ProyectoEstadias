@@ -1,39 +1,54 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type { Usuario, UsuarioTipo, UsersRepository } from '../db/usersRepository';
-import { SESSION_COOKIE, leerToken, motivoSinAcceso, sessionCookieOptions } from './session';
+import { SESSION_COOKIE, clienteLocal, conexionSegura, leerToken, motivoSinAcceso, opcionesCookie } from './session';
 
 declare global {
     namespace Express {
         interface Request {
             /** Usuario de la sesión, disponible después de requireAuth. */
             usuario?: Usuario;
+            /** Versión de sesión del token, disponible después de requireAuth. */
+            sesionVersion?: number;
         }
     }
 }
 
-function sinSesion(res: Response, mensaje: string): void {
-    res.clearCookie(SESSION_COOKIE, sessionCookieOptions);
+function sinSesion(req: Request, res: Response, mensaje: string): void {
+    res.clearCookie(SESSION_COOKIE, opcionesCookie(req));
     res.status(401).json({ errores: [mensaje] });
 }
 
 /**
+ * Rechaza la API por HTTP sin cifrar salvo desde esta misma máquina: en la red local
+ * la contraseña y la cookie de sesión viajarían en texto plano.
+ */
+export const requireHttps: RequestHandler = (req, res, next) => {
+    if (conexionSegura(req) || clienteLocal(req)) return next();
+    res.status(403).json({ errores: ['CONEXIÓN NO SEGURA: ENTRE AL SISTEMA CON HTTPS'] });
+};
+
+/**
  * Exige una sesión válida. El usuario se vuelve a leer de la BD en cada petición,
  * así un cambio de estatus, vigencia o tipo aplica de inmediato y no hasta que expire el token.
+ * El token también se rechaza si su versión ya no es la vigente (cerró sesión o cambió la contraseña).
  */
 export function requireAuth(repository: UsersRepository): RequestHandler {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const token: unknown = req.cookies?.[SESSION_COOKIE];
-        const id = typeof token === 'string' ? leerToken(token) : null;
-        if (!id) return sinSesion(res, 'SESIÓN EXPIRADA, INICIE SESIÓN DE NUEVO');
+        const cookie: unknown = req.cookies?.[SESSION_COOKIE];
+        const token = typeof cookie === 'string' ? leerToken(cookie) : null;
+        if (!token) return sinSesion(req, res, 'SESIÓN EXPIRADA, INICIE SESIÓN DE NUEVO');
 
         try {
-            const usuario = await repository.buscarPorId(id);
-            if (!usuario) return sinSesion(res, 'SESIÓN EXPIRADA, INICIE SESIÓN DE NUEVO');
+            const sesion = await repository.buscarSesion(token.id);
+            if (!sesion || sesion.sesionVersion !== token.version) {
+                return sinSesion(req, res, 'SESIÓN EXPIRADA, INICIE SESIÓN DE NUEVO');
+            }
 
-            const motivo = motivoSinAcceso(usuario);
-            if (motivo) return sinSesion(res, motivo);
+            const motivo = motivoSinAcceso(sesion.usuario);
+            if (motivo) return sinSesion(req, res, motivo);
 
-            req.usuario = usuario;
+            req.usuario = sesion.usuario;
+            req.sesionVersion = sesion.sesionVersion;
             next();
         } catch (error) {
             console.error('Error al validar la sesión:', error);

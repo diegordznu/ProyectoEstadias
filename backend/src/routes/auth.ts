@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { Router, type Request, type Response } from 'express';
 import { limpiarFallos, registrarFallo, tiempoBloqueado } from '../auth/loginAttempts';
 import { requireAuth } from '../auth/middleware';
-import { SESSION_COOKIE, crearToken, motivoSinAcceso, sessionCookieOptions } from '../auth/session';
+import { SESSION_COOKIE, crearToken, leerToken, motivoSinAcceso, opcionesCookie } from '../auth/session';
 import type { UsersRepository } from '../db/usersRepository';
 import { soloTexto } from '../validation/users';
 
@@ -47,14 +47,14 @@ export function createAuthRouter(repository: UsersRepository): Router {
 
             limpiarFallos(usuario, ip);
 
-            const { passwordHash: _passwordHash, ...sesion } = encontrado;
+            const { passwordHash: _passwordHash, sesionVersion, ...sesion } = encontrado;
 
             // La contraseña era correcta: aquí sí se puede decir por qué no entra.
             const motivo = motivoSinAcceso(sesion);
             if (motivo) return res.status(403).json({ errores: [motivo] });
 
-            const { token, maxAge } = crearToken(sesion);
-            res.cookie(SESSION_COOKIE, token, { ...sessionCookieOptions, maxAge });
+            const { token, maxAge } = crearToken(sesion, sesionVersion);
+            res.cookie(SESSION_COOKIE, token, { ...opcionesCookie(req), maxAge });
             res.json(sesion);
         } catch (error) {
             console.error('Error al iniciar sesión:', error);
@@ -62,9 +62,22 @@ export function createAuthRouter(repository: UsersRepository): Router {
         }
     });
 
-    router.post('/logout', (_req: Request, res: Response) => {
-        res.clearCookie(SESSION_COOKIE, sessionCookieOptions);
-        res.status(204).end();
+    // Además de borrar la cookie, revoca el token en el servidor: una copia robada deja de servir.
+    // Se cierran todas las sesiones del usuario (también las de otros equipos).
+    router.post('/logout', async (req: Request, res: Response) => {
+        res.clearCookie(SESSION_COOKIE, opcionesCookie(req));
+
+        const cookie: unknown = req.cookies?.[SESSION_COOKIE];
+        const token = typeof cookie === 'string' ? leerToken(cookie) : null;
+        if (!token) return res.status(204).end();
+
+        try {
+            await repository.cerrarSesiones(token.id, token.version);
+            res.status(204).end();
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            res.status(500).json({ errores: ['NO SE PUDO CERRAR LA SESIÓN EN EL SERVIDOR'] });
+        }
     });
 
     // Permite al frontend recuperar la sesión al recargar la página.

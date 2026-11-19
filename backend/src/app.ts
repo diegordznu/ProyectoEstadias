@@ -1,6 +1,6 @@
 import cookieParser from 'cookie-parser';
 import express, { type Application, type NextFunction, type Request, type Response } from 'express';
-import { requireAdmin, requireAuth } from './auth/middleware';
+import { requireAdmin, requireAuth, requireHttps } from './auth/middleware';
 import { requiredEnv } from './config/env';
 import { createUsersRepository } from './db';
 import { InventarioRepository } from './db/inventarioRepository';
@@ -23,9 +23,12 @@ const app: Application = express();
 // En Vercel la petición llega por su proxy, que reescribe X-Forwarded-For con la IP real del
 // cliente. En local el frontend pasa por el proxy de Vite (misma máquina): se confía solo en
 // loopback, así quien se conecte directo al puerto 3000 no puede falsificar ese encabezado.
-// req.ip se usa para el bloqueo de intentos de login.
+// req.ip se usa para el bloqueo de intentos de login y req.secure (X-Forwarded-Proto) para exigir HTTPS.
 app.set('trust proxy', process.env.VERCEL ? true : 'loopback');
 app.disable('x-powered-by');
+
+// Antes que todo lo demás: sin HTTPS (fuera de esta máquina) la API no recibe contraseñas ni cookies.
+app.use('/api', requireHttps);
 
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());

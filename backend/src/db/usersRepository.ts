@@ -37,6 +37,14 @@ export interface UsuarioAltaInput extends UsuarioInput {
 /** Usuario con su hash: solo para verificar credenciales, nunca se envía al cliente. */
 export interface UsuarioConPassword extends Usuario {
     passwordHash: string;
+    /** Versión de sesión vigente: va dentro del token (ver sql/04_sesiones.sql). */
+    sesionVersion: number;
+}
+
+/** Usuario y versión de sesión vigente, para validar un token. */
+export interface SesionUsuario {
+    usuario: Usuario;
+    sesionVersion: number;
 }
 
 /**
@@ -48,8 +56,18 @@ export interface UsersRepository {
     buscarPorId(id: number): Promise<Usuario | null>;
     /** Incluye el hash para el login. Devuelve null cuando no existe. */
     buscarPorUsuario(usuario: string): Promise<UsuarioConPassword | null>;
+    /** Usuario con su versión de sesión. Devuelve null cuando no existe. */
+    buscarSesion(id: number): Promise<SesionUsuario | null>;
+    /**
+     * Invalida todos los tokens del usuario (incrementa su versión de sesión),
+     * solo si la versión actual sigue siendo `version`.
+     */
+    cerrarSesiones(id: number, version: number): Promise<void>;
     crear(input: UsuarioAltaInput): Promise<Usuario>;
-    /** Devuelve null cuando el id no existe. */
+    /**
+     * Devuelve null cuando el id no existe.
+     * Si cambia la contraseña, también invalida todas las sesiones del usuario.
+     */
     modificar(id: number, input: UsuarioInput): Promise<Usuario | null>;
     /** Devuelve false cuando el id no existe. */
     eliminar(id: number): Promise<boolean>;

@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { Router, type Request, type Response } from 'express';
-import { motivoSinAcceso } from '../auth/session';
+import { SESSION_COOKIE, crearToken, motivoSinAcceso, opcionesCookie } from '../auth/session';
 import type { UsersRepository } from '../db/usersRepository';
 import { validarUsuario, type UsuarioPayload } from '../validation/users';
 
@@ -86,6 +86,16 @@ export function createUsersRouter(repository: UsersRepository): Router {
 
             if (!usuario) {
                 return res.status(404).json({ errores: ['EL USUARIO NO EXISTE'] });
+            }
+
+            // Cambiar la contraseña invalida todas las sesiones del usuario. Si el admin cambió
+            // la suya, se le emite un token nuevo para que esta sesión siga abierta.
+            if (passwordHash && id === req.usuario?.id) {
+                const sesion = await repository.buscarSesion(id);
+                if (sesion) {
+                    const { token, maxAge } = crearToken(sesion.usuario, sesion.sesionVersion);
+                    res.cookie(SESSION_COOKIE, token, { ...opcionesCookie(req), maxAge });
+                }
             }
 
             res.json(usuario);
