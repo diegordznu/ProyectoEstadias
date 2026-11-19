@@ -24,3 +24,7 @@ skills-lock.json
 
 # Vercel
 .vercel
+
+# Documento de entrega (PDF, capturas y credenciales): solo local, no se sube.
+# En docs/ solo se versiona DOCUMENTACION.md.
+docs/entrega/

@@ -561,6 +561,13 @@ th {
   max-width: calc(100vw - 60px);
 }
 
+.calendar-hint {
+  max-width: 280px;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
 .material-panel {
   position: absolute;
   top: calc(100% + 8px);

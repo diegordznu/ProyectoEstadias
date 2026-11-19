@@ -3,6 +3,7 @@ import { DayPicker, type DateRange } from 'react-day-picker'
 import { es } from 'react-day-picker/locale/es'
 import {
   DATE_PRESETS,
+  formatDateISO,
   rangeLabel,
   type DatePreset,
   type DateRangeValue,
@@ -26,15 +27,32 @@ export function DateRangeFilter({
   onCustomRangeChange,
 }: DateRangeFilterProps) {
   const [open, setOpen] = useState(false)
-  const rootRef = useClickOutside(open, setOpen)
+  /** Primer día elegido desde que se abrió el calendario: el segundo clic forma el rango. */
+  const [inicio, setInicio] = useState<Date | null>(null)
+
+  const cambiarAbierto = (valor: boolean) => {
+    setOpen(valor)
+    setInicio(null)
+  }
+  const rootRef = useClickOutside(open, cambiarAbierto)
 
   const selected: DateRange = { from: customRange.from, to: customRange.to }
   const label = rangeLabel(range)
 
-  const handleSelect = (next: DateRange | undefined) => {
-    onCustomRangeChange({ from: next?.from, to: next?.to })
+  // Primer clic: filtra ese día y deja el calendario abierto (CERRAR o clic afuera lo conservan).
+  // Segundo clic: forma el rango entre ambos días, en cualquier orden, y cierra.
+  const handleDayClick = (dia: Date) => {
     onPresetChange('custom')
-    if (next?.from && next?.to) setOpen(false)
+
+    if (!inicio) {
+      onCustomRangeChange({ from: dia, to: dia })
+      setInicio(dia)
+      return
+    }
+
+    const [desde, hasta] = inicio <= dia ? [inicio, dia] : [dia, inicio]
+    onCustomRangeChange({ from: desde, to: hasta })
+    cambiarAbierto(false)
   }
 
   return (
@@ -49,7 +67,7 @@ export function DateRangeFilter({
             className={preset === item.id ? 'preset-btn active' : 'preset-btn'}
             onClick={() => {
               onPresetChange(item.id)
-              setOpen(false)
+              cambiarAbierto(false)
             }}
           >
             {item.label}
@@ -59,7 +77,7 @@ export function DateRangeFilter({
         <button
           type="button"
           className={preset === 'custom' ? 'preset-btn active' : 'preset-btn'}
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => cambiarAbierto(!open)}
           aria-expanded={open}
         >
           CALENDARIO
@@ -74,11 +92,16 @@ export function DateRangeFilter({
             mode="range"
             locale={es}
             selected={selected}
-            onSelect={handleSelect}
+            onSelect={(_seleccion, dia) => handleDayClick(dia)}
             showOutsideDays
             captionLayout="dropdown-months"
           />
-          <button type="button" className="btn-gray compact inline-action" onClick={() => setOpen(false)}>
+          <span className="calendar-hint">
+            {inicio
+              ? `DÍA ${formatDateISO(inicio)}. ELIJA OTRO DÍA PARA UN RANGO O CIERRE.`
+              : 'ELIJA UN DÍA, O DOS PARA UN RANGO.'}
+          </span>
+          <button type="button" className="btn-gray compact inline-action" onClick={() => cambiarAbierto(false)}>
             CERRAR
           </button>
         </div>
